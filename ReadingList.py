@@ -1,4 +1,3 @@
-from typing import Dict
 import requests
 import json
 import datetime
@@ -14,7 +13,7 @@ checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.u
 
 clientID = "185188df22248e6"
 
-ourList = ["Name", "Publisher", "Author", "Summary", "Category", "Published", "ISBN", "Pages"]
+ourList = ["Title", "Publisher", "Authors", "Summary", "Category", "Published", "ISBN_10", "Pages", "ISBN_13"]
 
 def GetWhatIsNeeded():
     url = f'https://api.notion.com/v1/databases/{databaseID}/query'
@@ -25,6 +24,9 @@ def GetWhatIsNeeded():
     result_dict = r.json()
     results = result_dict["results"]
     return (results)
+
+# r = GetWhatIsNeeded()
+# print (r)    
 
 # GetWhatIsNeeded()    
 
@@ -54,7 +56,7 @@ def retrieveTitle():
     dicOfTitleIDList = {}
     dicOfNewTitles = {}
     for item in results:
-        detailsOfTitleList = item["properties"]["Name"]["title"]
+        detailsOfTitleList = item["properties"]["Title"]["title"]
         if len(detailsOfTitleList) != 0:
             for i in detailsOfTitleList:
                 actualTitle = i["text"]["content"]
@@ -71,26 +73,66 @@ def retrieveTitle():
 
 
 def mapToNotion(result):
+    dictOfFields = {}
     cover = result["cover"]
-    publisher = result["properties"]["Publisher"]["rich_text"]
-    author = result["properties"]["Author"]["rich_text"]
-    summary = result["properties"]["Summary"]["rich_text"]
-    published = result["properties"]["Published"]["rich_text"]
-    ISBN = result["properties"]["ISBN"]["rich_text"]
-    pages = result["properties"]["Pages"]["number"]
-    name = result["properties"]["Name"]["title"]
-    category = result["properties"]["Category"]["rich_text"]
-    return {"cover":cover,
-    "Publisher": publisher,
-    "Author": author,
-    "Summary": summary,
-    "Published" : published,
-    "ISBN": ISBN,
-    "Pages": pages,
-    "Name": name,  
-    "Category": category
-    }
-
+    if cover is not None:
+        dictOfFields["cover"] = cover
+    publisher = result.get("properties", {}).get("Publisher", {}).get("rich_text")
+    # listOfFields.append(publisher)
+    if publisher is not None:
+        dictOfFields["Publisher"] = publisher
+    # publisher = result["properties"]["Publisher"]["rich_text"]
+    authors = result.get("properties", {}).get("Authors", {}).get("rich_text")
+    if authors is not None:
+        dictOfFields["Authors"] = authors
+    # listOfFields.append(authors)
+    # authors = result["properties"]["Authors"]["rich_text"]
+    summary = result.get("properties", {}).get("Summary", {}).get("rich_text")
+    if summary is not None:
+        dictOfFields["Summary"] = summary
+    # listOfFields.append(summary)
+    # summary = result["properties"]["Summary"]["rich_text"]
+    published = result.get("properties", {}).get("Published", {}).get("rich_text")
+    if published is not None:
+        dictOfFields["Published"] = published
+    # listOfFields.append(published)
+    # published = result["properties"]["Published"]["rich_text"]
+    ISBN_10 = result.get("properties", {}).get("ISBN", {}).get("rich_text")
+    if ISBN_10 is not None:
+        dictOfFields["ISBN_10"] = ISBN_10
+    ISBN_13 = result.get("properties", {}).get("ISBN", {}).get("rich_text")
+    if ISBN_13 is not None:
+        dictOfFields["ISBN_13"] = ISBN_13    
+    # listOfFields.append(ISBN)
+    # ISBN = result["properties"]["ISBN"]["rich_text"]
+    pages = result.get("properties", {}).get("Pages", {}).get("number")
+    if pages is not None:
+        dictOfFields["Pages"] = pages
+    # listOfFields.append(pages)
+    # pages = result["properties"]["Pages"]["number"]
+    title = result.get("properties", {}).get("Title", {}).get("title")
+    if title is not None:
+        dictOfFields["Title"] = title
+    # listOfFields.append(title)
+    # title = result["properties"]["Title"]["title"]
+    category = result.get("properties", {}).get("Category", {}).get("rich_text", None)
+    if category is not None:
+        dictOfFields["Category"] = category
+    return dictOfFields        
+    # listOfFields.append(category)
+    # category = result["properties"]["Category"]["rich_text"]   
+    # for item in listOfFields:
+    #     if item is not None:
+    #         dictOfFields[item] = it
+    # return {"cover":cover,
+    # "Publisher": publisher,
+    # "Author": author,
+    # "Summary": summary,
+    # "Published" : published,
+    # "ISBN": ISBN,
+    # "Pages": pages,
+    # "Name": name,  
+    # "Category": category}
 
 
 def getAllFields():
@@ -104,6 +146,10 @@ def getAllFields():
     if len(Title) != 0:
         dictofFields = mapToNotion(Title[0])           
         return (dictofFields)
+
+# r = getAllFields()
+# print (r)        
+
 
 
 def listOfFields(dictofFields): #Takes a dictionary
@@ -166,7 +212,7 @@ def getImage(AllWeNeed):
             f.write(r.content)         
         return (f"{title}")  
     else: 
-        return "/Users/sravanthis/Documents/MyProjects/NoImage.jpg"
+        return "NoImage.jpg"
 
 
 def resizeImage(title):
@@ -194,12 +240,32 @@ def getHex(title):
     #     RGBValuesList = list(map(float, RGBvalues))
     # return (RGBValuesList)   
     return (stringHighestValue)   
+
+def alterIfBlack(sRGBString):
+    dontWantinString = "srgb%()"
+    finalString = ""
+    for letter in sRGBString:
+            if letter not in dontWantinString:
+                finalString += letter
+    RGBvalues = finalString.split(",")
+    RGBValuesList = list(map(float, RGBvalues))
+    r = (RGBValuesList[0]/100) * 255
+    g = (RGBValuesList[1]/100) * 255
+    b = (RGBValuesList[2]/100) * 255
+    if r and g and b <= 30:
+        return True
+
+
      
               
-def createBackground(hexCode):  #input is srgbcode
+def createBackground(hexCode):
+    # if alterIfBlack(hexCode) is True:
+    #     actualHexCode = "#1E1E1D"
+    # else:
+    #     actualHexCode = hexCode   #input is srgbcode
     with Color(hexCode) as bg:
         with Image(width= 500, height= 200 , background= bg) as img:
-            img.save(filename = "BackGround.jpg")
+                img.save(filename = "BackGround.jpg")
         # with Image(filename="BackGround.jpg"):
             # img.gaussian_blur(sigma = 3)    
     return "BackGround.jpg"    
@@ -232,7 +298,7 @@ def addShadow(filePath, background):
         img.gaussian_blur(sigma=3)
         img.save(filename="BlurredBackground.jpg")            
     
-    return "/Users/sravanthis/Documents/MyProjects/BlurredBackground.jpg"
+    return "BlurredBackground.jpg"
 # def Blur(file):
 #     with Image(filename=file) as img:
 #         img.gaussian_blur(sigma = 3)
@@ -274,7 +340,7 @@ def cannotRetrieve(title, pageID):
     url = f'https://api.notion.com/v1/pages/{pageID}'
     payload = {
         "properties" : {
-            "Name": {
+            "Title": {
                 "title" : [
                     {
                         "text" : {
@@ -303,26 +369,28 @@ def mapOneDicToAnother(availableFields, GoogleBookInfo, pageID):
         availableFields["cover"] = GoogleBookInfo.get("imageLinks", "")
         availableFields["Publisher"] = GoogleBookInfo.get("publisher", "")
         if GoogleBookInfo.get("authors") != None:
-            author = ""
+            authors = ""
             if len(GoogleBookInfo["authors"]) > 1:
                 for element in GoogleBookInfo["authors"]:  
-                    author = author + element + ", "
+                    authors = authors + element + ", "
             else:
                 for element in GoogleBookInfo["authors"]:
-                    author = author + element        
-        availableFields["Author"] = author    
+                    authors = authors + element        
+        availableFields["Authors"] = authors   
         availableFields["Summary"] = GoogleBookInfo.get("description", "")
         availableFields["Published"] = GoogleBookInfo.get("publishedDate", "")
         if GoogleBookInfo.get("industryIdentifiers") != None:
-            ISBNNum = ""
-            for element in GoogleBookInfo["industryIdentifiers"]:
-                ISBNNum = ISBNNum + element["type"] + element["identifier"] + ""
+           for element in GoogleBookInfo["industryIdentifiers"]:
+                if element["type"] == "ISBN_10":
+                   availableFields["ISBN_10"] = element["identifier"]
+                if element["type"] == "ISBN_13":
+                    availableFields["ISBN_13"] = element["identifier"]   
         else:
-            ISBNNum = ""        
-        availableFields["ISBN"] = ISBNNum
+            availableFields["ISBN_10"] = ""      
+            availableFields["ISBN_13"] = ""
         availableFields["Pages"] = GoogleBookInfo.get("pageCount", 0)
-        availableFields["Name"] = GoogleBookInfo.get("title", "")
-        availableFields["TitleDiff"] = GoogleBookInfo.get("title", "")
+        availableFields["Title"] = GoogleBookInfo.get("title", "")
+        # availableFields["TitleDiff"] = GoogleBookInfo.get("title", "")
         if GoogleBookInfo.get("categories") != None:
             category = ""
             for element in GoogleBookInfo["categories"]:
@@ -360,10 +428,10 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
                     }
                 ]
             },
-            "Author" : {
+            "Authors" : {
                 "rich_text" : [
                     {"text" : {
-                        "content" : availableFields["Author"]
+                        "content" : availableFields["Authors"]
                         }
                     }
                 ]
@@ -392,10 +460,18 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
                     }
                 ]
             },    
-            "ISBN" : {
+            "ISBN_10" : {
                 "rich_text" : [
                     {"text" : {
-                        "content" : availableFields["ISBN"]
+                        "content" : availableFields["ISBN_10"]
+                        }
+                    }
+                ]
+            },
+            "ISBN_13" : {
+                "rich_text" : [
+                    {"text" : {
+                        "content" : availableFields["ISBN_13"]
                         }
                     }
                 ]
@@ -403,11 +479,11 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
             "Pages" : {
                 "number": availableFields["Pages"]
             },
-            "Name": {
+            "Title": {
                 "title" : [
                     {
                         "text" : {
-                            "content": availableFields ["Name"]
+                            "content": availableFields ["Title"]
                         }
                     }
                 ]
@@ -423,36 +499,40 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
             # }
         }    
     }
+    # print(deletedProperty)
     for item in deletedProperty:
-        del payload["properties"][item]               
+        del payload["properties"][item]     
+        print (payload)             
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
     # if r.status() == 200
-    print (r.json())
+    return (r.json())
 
 
 
-while True:
-    try:
-        timeEdited = lastEdited()
-        if timeEdited > checkTime:
-            availableFields = getAllFields()
-            newTitle = retrieveTitle()
-            missingProperties = compareLists(ourList, listOfFields(availableFields))
-            print(missingProperties)
-            for item in newTitle:    
-                newtitleDeets = getDeets (item, newTitle[item])
-                if newtitleDeets is not None:
-                    mappedDic = mapOneDicToAnother(availableFields, newtitleDeets, newTitle[item] )
-                    coverImage = getImage(newtitleDeets)
-                    finalCoverImage = finalImage(coverImage)
-                    coverImageURL = uploadImage (finalCoverImage)
-                    updateDatabase(mappedDic, newTitle[item], coverImageURL, missingProperties)
-    except Exception as e:
-        print(e)
+# while True:
+#     try:
+#         timeEdited = lastEdited()
+#         if timeEdited > checkTime:
+#             availableFields = getAllFields()
+#             # print (availableFields)
+#             newTitle = retrieveTitle()
+#             # print (ourList, listOfFields(availableFields))
+#             missingProperties = compareLists(ourList, listOfFields(availableFields))
+#             print (missingProperties)
+#             for item in newTitle:    
+#                 newtitleDeets = getDeets (item, newTitle[item])
+#                 if newtitleDeets is not None:
+#                     mappedDic = mapOneDicToAnother(availableFields, newtitleDeets, newTitle[item] )
+#                     coverImage = getImage(newtitleDeets)
+#                     finalCoverImage = finalImage(coverImage)
+#                     coverImageURL = uploadImage (finalCoverImage)
+#                     updateDatabase(mappedDic, newTitle[item], coverImageURL, missingProperties)
+#     except Exception as e:
+#         print(e)
 
 
 
