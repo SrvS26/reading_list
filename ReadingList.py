@@ -15,7 +15,7 @@ clientID = "185188df22248e6"
 
 ourList = ["Title", "Publisher", "Authors", "Summary", "Category", "Published", "ISBN_10", "Pages", "ISBN_13", "Summary_extd"]
 
-ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_extd": "", "Category":"", "Published": "", "ISBN_10": None, "Pages": None, "ISBN_13": None}
+ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_extd": "", "Category":"", "Published": "", "ISBN_10": "", "Pages": None, "ISBN_13":""}
 
 
 
@@ -32,7 +32,7 @@ def getlastEdited():
     lastEdited = datetime.datetime.strptime(result_dict["last_edited_time"], "%Y-%m-%dT%H:%M:%S.%f%z")
     return lastEdited
 
- 
+# lastEditedTime = getlastEdited() 
 
 #Returns a list of dictionaries, each dictionary contains details of one page in the database 
 
@@ -46,6 +46,8 @@ def getPagePropertyDetails():
     results = result_dict["results"]
     return (results)
 
+# print (getPagePropertyDetails())
+# results = getPagePropertyDetails()
 # def main():
 # databaseId = ""
 # token = ""
@@ -62,30 +64,46 @@ def getPagePropertyDetails():
 #     if i["title"] == "Fountainhead":
 #         return i["pageId"]
 
-def getNewTitles():
-    dicOfTitlesWithIDs = {}        
-    dicOfNewTitlesWithIDs = {}
-    pagePropertyDetails = getPagePropertyDetails()
-    if len(pagePropertyDetails) > 0: 
-        for item in pagePropertyDetails:                                    #Loops through each page in the database
-            detailsOfTitle = item["properties"]["Title"]["title"]           #Gets list of details of title of each page 
-            if len(detailsOfTitle) > 0:                                     #Ensures the list is not empty (Equivalent to an empty Title field in database)
-                for i in detailsOfTitle:                                    #Loops through different details of the title
-                    actualTitle = i["text"]["content"]                      #Gets title text
-                    dicOfTitlesWithIDs[actualTitle] = ""                    #Creates a dictionary with the title text as key and an empty string as value (to be Page ID) 
-                pageID = item["id"]                                         #Gets page ID for the respective title/page
-                dicOfTitlesWithIDs[actualTitle] = pageID                    #Updates the dictionary with the Page ID as value for the respective title as key                   
-        for key in dicOfTitlesWithIDs.keys():                               #Loops through the dictionary to find the new titles
-            if key[-1] == ";":                                              
-                dicOfNewTitlesWithIDs[key[:-1]] = dicOfTitlesWithIDs[key]
-        if len(dicOfNewTitlesWithIDs) != 0:
-            return dicOfNewTitlesWithIDs  
-                                                                                #Add new titles to a new dictionary with respective Page ID    
-
-               
-
-
-
+def getNewTitlesOrISBN():   
+    listOfAllTitlesOrISBN = []
+    results = getPagePropertyDetails()
+    if len(results) > 0: 
+        for item in results:  
+            dicOfTitlesOrISBN = {}                                    
+            detailsOfISBN10 = item["properties"]["ISBN_10"]["rich_text"]
+            detailsOfISBN13 = item["properties"]["ISBN_13"]["rich_text"]
+            detailsOfTitle = item["properties"]["Title"]["title"]   
+            if len(detailsOfTitle) > 0:                                     
+                for i in detailsOfTitle:                                    
+                    actualTitle = i["text"]["content"]  
+            else:
+                actualTitle = ""        
+            if len(detailsOfISBN10) > 0:
+                for i in detailsOfISBN10:
+                    actualISBN10 = i["text"]["content"]
+            else:
+                actualISBN10 = ""                
+            if len(detailsOfISBN13) > 0:
+                for i in detailsOfISBN13:
+                    actualISBN13 = i["text"]["content"]                
+            else:
+                actualISBN13 = ""        
+            if actualTitle != "" and actualTitle[-1] == ";":
+                dicOfTitlesOrISBN["Value"] = actualTitle[:-1]
+                dicOfTitlesOrISBN["Type"] = "Title"
+            elif actualISBN10 != "" and actualISBN10[-1] == ";":                                                                   
+                dicOfTitlesOrISBN["Value"] = actualISBN10[:-1]
+                dicOfTitlesOrISBN["Type"] = "ISBN_10"            
+            elif actualISBN13 != "" and actualISBN13[-1] == ";":
+                dicOfTitlesOrISBN["Value"] = actualISBN13[:-1]
+                dicOfTitlesOrISBN["Type"] = "ISBN_13"   
+            if len(dicOfTitlesOrISBN) != 0:                        
+                pageID = item["id"]                                         
+                dicOfTitlesOrISBN["pageID"] = pageID 
+                listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)                                
+    return listOfAllTitlesOrISBN
+                                                                                
+# getNewTitlesOrISBN(results)
 # returns all the fields available for filling in the database
 
 def getAllFields():
@@ -104,8 +122,11 @@ def getAllFields():
 #takes title name and pageID
 #returns a dictionary with details of the book
 
-def getBookDetails(title, pageID):
-    url = "https://www.googleapis.com/books/v1/volumes?q=" + title 
+def getBookDetails(dicOfTitlesOrISBN):
+    if dicOfTitlesOrISBN.get("Type") == "Title":
+        url = "https://www.googleapis.com/books/v1/volumes?q=" + dicOfTitlesOrISBN["Value"]
+    elif dicOfTitlesOrISBN.get("Type") == "ISBN_10" or dicOfTitlesOrISBN.get("Type") == "ISBN_13":
+        url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"]     
     webPageDetails = requests.get(url)                                      
     webPageContent = (webPageDetails.content)
     parsedContent = json.loads(webPageContent)                              
@@ -122,12 +143,12 @@ def getBookDetails(title, pageID):
                 continue    
         return (dicOfRequiredBookDetails)                                      
     else:
-        cannotRetrieve(title, pageID)    
+        cannotRetrieve(dicOfTitlesOrISBN)    
         return None
 
 
 
-def mapOneDicToAnother(ourDic, GoogleBookInfo, pageID):
+def mapOneDicToAnother(ourDic, GoogleBookInfo):
     ourDic["Publisher"] = GoogleBookInfo.get("publisher", "")
     listauthors = []
     if GoogleBookInfo.get("authors") != None and len(GoogleBookInfo["authors"]) > 0:
@@ -184,7 +205,6 @@ def getImage(AllWeNeed):
         return (f"{title}")  
     else: 
         return "NoImage.jpg"
-
 
 
 
@@ -273,13 +293,25 @@ def finalImage(image):
     return "result.jpg"    
 
 
+def getImageCover(ourDic):
+    if ourDic.get("ISBN_13") != None:
+        ISBN = ourDic["ISBN_13"]
+    elif ourDic.get("ISBN_10") != None:
+        ISBN = ourDic["ISBN_10"]
+    return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"        
 
-def uploadImage(image):
+
+
+def uploadImage(image, ourDic):
     clientid = clientID
     path = image
     im = pyimgur.Imgur(clientid)
-    uploaded_image = im.upload_image(path, title="Uploaded with PyImgur")
-    return (uploaded_image.link)
+    try:
+        uploaded_image = im.upload_image(path, title="Uploaded with PyImgur")
+        return (uploaded_image.link)
+    except Exception as e:
+        # return "https://cdn.99images.com/photos/wallpapers/creative-graphics/black%20android-iphone-desktop-hd-backgrounds-wallpapers-1080p-4k-j7bml.jpg"
+        return getImageCover(ourDic)  
 
 
 
@@ -289,21 +321,50 @@ def compareLists(Theirs):
 
 
 
-def cannotRetrieve(title, pageID):
-    url = f'https://api.notion.com/v1/pages/{pageID}'
-    payload = {
+def cannotRetrieve(dicOfTitlesOrISBN):
+    url = f'https://api.notion.com/v1/pages/{dicOfTitlesOrISBN["pageID"]}'
+    if dicOfTitlesOrISBN["Type"] == "Title":
+        payload = {
         "properties" : {
             "Title": {
                 "title" : [
                     {
-                        "text" : {
-                            "content": title
+                    "text" : {
+                        "content": dicOfTitlesOrISBN["Value"]
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }
         }
-    }
+    elif dicOfTitlesOrISBN["Type"] == "ISBN_10":
+        payload = {
+        "properties" : {
+            "ISBN_10" : {
+                "rich_text" : [
+                    {
+                        "text" : {
+                        "content" : dicOfTitlesOrISBN["Value"]
+                            }
+                        }
+                    ]
+                }
+            }
+        }    
+    elif dicOfTitlesOrISBN["Type"] == "ISBN_13":
+        payload = {
+        "properties" : {
+            "ISBN_13" : {
+                "rich_text" : [
+                    {
+                        "text" : {
+                        "content" : dicOfTitlesOrISBN["Value"]
+                            }
+                        }
+                    ]
+                }
+           }    
+        }    
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
@@ -313,7 +374,8 @@ def cannotRetrieve(title, pageID):
 
 
     
-def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
+def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty):
+    pageID = dicOfTitlesOrISBN["pageID"]
     url = f'https://api.notion.com/v1/pages/{pageID}'
     payload = {
         "cover" : {
@@ -393,7 +455,7 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
     }
     for item in deletedProperty:
         del payload["properties"][item]     
-        print (payload)             
+        # print (payload)             
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
@@ -401,7 +463,7 @@ def updateDatabase(availableFields, pageID, pageCoverURL, deletedProperty):
     })
     if r.status_code != 200:
         print (r.json())
-        cannotRetrieve(availableFields["Title"], pageID)
+        cannotRetrieve(dicOfTitlesOrISBN)
     else:        
         print (r.json())
 
@@ -412,17 +474,18 @@ while True:
     try:
         timeEdited = getlastEdited()
         if timeEdited > checkTime:
-            newTitles = getNewTitles()
+            newTitlesOrISBN = getNewTitlesOrISBN()
             availableFields = getAllFields()
             missingProperties = compareLists(availableFields)
-            for item in newTitles:    
-                newTitleDetails = getBookDetails (item, newTitles[item])
-                if newTitleDetails is not None:
-                    mappedDic = mapOneDicToAnother(ourDic, newTitleDetails, newTitles[item] )
-                    coverImage = getImage(newTitleDetails)
+            for item in newTitlesOrISBN:    
+                newGoogleBookDetails = getBookDetails(item)
+                if newGoogleBookDetails is not None:
+                    mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
+                    coverImage = getImage(newGoogleBookDetails)
                     finalCoverImage = finalImage(coverImage)
-                    coverImageURL = uploadImage (finalCoverImage)
-                    updateDatabase(mappedDic, newTitles[item], coverImageURL, missingProperties)
+                    coverImageURL = uploadImage (finalCoverImage, mappedDic)
+                    updateDatabase(mappedDic, item, coverImageURL, missingProperties)
     except Exception as e:
         print(e)
 
+ 
