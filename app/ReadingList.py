@@ -4,12 +4,14 @@ import datetime
 import pyimgur
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
+import sqlite3
 
-token = "secret_hei5HWtvc97doM7BWwhJBzDppzm9nN9dkaOHevQol2q"
+# token = "secret_hei5HWtvc97doM7BWwhJBzDppzm9nN9dkaOHevQol2q"
 
-databaseID = "2a4fdc20740b4f41a87463da37806ece"
+# databaseID = "2a4fdc20740b4f41a87463da37806ece"
 
-checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc)
+checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc).isoformat()
+epoch_time = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc).timestamp()
 
 clientID = "185188df22248e6"
 
@@ -17,56 +19,104 @@ ourList = ["Title", "Publisher", "Authors", "Summary", "Category", "Published", 
 
 ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_extd": "", "Category":"", "Published": "", "ISBN_10": "", "Pages": None, "ISBN_13":""}
 
+listAccessTokens = []
 
+def getDatabaseTimestamp(db_filemain, databaseCheckedTime):
+    conn = sqlite3.connect(db_filemain)
+    cursor = conn.cursor()
+    fetchtime = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
+    cursor.execute(fetchtime)
+    records = cursor.fetchall()
+    return records
 
+def getAccessTokens(records):
+    listofTokens = []
+    if len(records) != 0:
+        for row in records:
+            dicTokens = {}
+            access_token = row[0]
+            database_id = row[1]
+            user_id = row[2]
+            dicTokens["access_token"] = access_token
+            dicTokens ["database_id"] = database_id
+            dicTokens ["user_id"] = user_id
+            listofTokens.append(dicTokens)        
+        return listofTokens
+    else:
+        return listofTokens 
+    
 #Returns last edited time
 
-def getlastEdited():  
-    url = f'https://api.notion.com/v1/databases/{databaseID}'
-    r = requests.get(url, headers= {
-        "Authorization": f"Bearer {token}",
-    "Notion-Version": "2022-02-22"
-    })
-    result_dict = r.json()
-    lastEdited = result_dict["last_edited_time"]
-    lastEdited = datetime.datetime.strptime(result_dict["last_edited_time"], "%Y-%m-%dT%H:%M:%S.%f%z")
-    return lastEdited
+# def getlastEdited(databaseID, token):  
+#     url = f'https://api.notion.com/v1/databases/{databaseID}'
+#     r = requests.get(url, headers= {
+#         "Authorization": f"Bearer {token}",
+#     "Notion-Version": "2022-02-22"
+#     })
+#     result_dict = r.json()
+#     # print (result_dict)
+#     lastEdited = result_dict["last_edited_time"]
+#     # print (lastEdited)
+#     lastEdited = datetime.datetime.strptime(result_dict["last_edited_time"], "%Y-%m-%dT%H:%M:%S.%f%z")
+#     return lastEdited
 
-# lastEditedTime = getlastEdited() 
+# lastEditedTime = getlastEdited("2a4fdc20-740b-4f41-a874-63da37806ece","secret_R3eVdhCWWxfRohmuf39lLjZrNa5ZteKH2jjg5plDobK") 
+# print (lastEditedTime)
 
 #Returns a list of dictionaries, each dictionary contains details of one page in the database 
 
-def getPagePropertyDetails(): 
-    url = f'https://api.notion.com/v1/databases/{databaseID}/query'
-    r = requests.post(url, headers= {
-        "Authorization": f"Bearer {token}",
-        "Notion-Version": "2022-02-22"
-    })
-    result_dict = r.json()
-    results = result_dict["results"]
-    return (results)
+def requiredPageDetails(databaseID, token, lastCheckedTime): 
+    url = f"https://api.notion.com/v1/databases/{databaseID}/query"
+    payload = "{\n    \"filter\": {\n\t\t\t\"and\": [\n\t\t\t\t{\n        \"timestamp\": \"last_edited_time\",\n        \"last_edited_time\": {\n          \"on_or_after\": \"2022-04-30T17:45:00+00:00\"\n        }\n     },\n\t\t\t{\n\t\t\t\t\"or\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"Title\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n\t\t\t\t\t\t}\n\t\t\t\t\t},\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"ISBN_10\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n\t\t\t\t\t\t}\n\t\t\t\t\t},\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"ISBN_13\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n        \t\t}\n\t\t\t\t\t}\t\t\n\t\t\t\t]\n\t\t\t}\t\n\t\t]\t\t\n\t}\n}"
+    # payload = {
+#   "filter": {
+#     "and": [
+#       {
+#         "timestamp": "last_edited_time",
+#         "last_edited_time": {
+#           "on_or_after": "2022-04-30T17:45:00+00:00"
+#         }
+#       },
+#       {
+#         "or": [
+#           {
+#             "property": "Title",
+#             "rich_text": {
+#               "ends_with": ";"
+#             }
+#           },
+#           {
+#             "property": "ISBN_10",
+#             "rich_text": {
+#               "ends_with": ";"
+#             }
+#           },
+#           {
+#             "property": "ISBN_13",
+#             "rich_text": {
+#               "ends_with": ";"
+#             }
+#           }
+#         ]
+#       }
+#     ]
+#   }
+# }
+    headers = {
+        'Content-Type': "application/json",
+        'Notion-Version': "2022-02-22",
+        'Authorization': f"Bearer {token}"
+        }
+    response = requests.request("POST", url, data=payload, headers=headers)
+    parsed_response = response.json()
+    results = parsed_response["results"]   
+    return results
 
-# print (getPagePropertyDetails())
-# results = getPagePropertyDetails()
-# def main():
-# databaseId = ""
-# token = ""
-# dbResults = fetchDatabaseProperties(databaseId, token) -> DatabasePropertyResults
-# toBeFilled = 
+# response = requiredPageDetails("2a4fdc20-740b-4f41-a874-63da37806ece", "secret_vvY20viloJbtYaG1gzhCyzcnTWcQMd4IjdIzz0u6ujV", "2022-04-30T17:45:00+00:00")
+# print (response)
 
-#Returns a dictionary of title name as key (string) and page ID as value (string)
-# () -> {value: title/isbn10, pageId: pageId, type: "title"/"ISBN"}
-# dict[title]
-# [{title: fountainhead, pageId:1},{title:atlas shrugged,pageId: 2},{pageId:3, title:harry potter}]
-# dict["title"] == "FountainHead": dict["pageId"]
-
-# for i in listOfTitles:
-#     if i["title"] == "Fountainhead":
-#         return i["pageId"]
-
-def getNewTitlesOrISBN():   
+def getNewTitlesOrISBN(results):   
     listOfAllTitlesOrISBN = []
-    results = getPagePropertyDetails()
     if len(results) > 0: 
         for item in results:  
             dicOfTitlesOrISBN = {}                                    
@@ -103,21 +153,31 @@ def getNewTitlesOrISBN():
                 listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)                                
     return listOfAllTitlesOrISBN
                                                                                 
-# getNewTitlesOrISBN(results)
+# print (getNewTitlesOrISBN(response))
 # returns all the fields available for filling in the database
 
-def getAllFields():
+
+# def getPagePropertyDetails(): 
+#     url = f'https://api.notion.com/v1/databases/{databaseID}/query'
+#     r = requests.post(url, headers= {
+#         "Authorization": f"Bearer {token}",
+#         "Notion-Version": "2022-02-22"
+#     })
+#     result_dict = r.json()
+#     results = result_dict["results"]
+#     return (results)
+
+def getAllFields(results):
     allAvailableList = []
-    pagePropertyDetails = getPagePropertyDetails()
-    if len(pagePropertyDetails) > 0:                                        #Ensures that the database is not empty                  
-        onePagePropertyDetails = pagePropertyDetails[0]                     #Chooses the first dictionary of page details
+    if len(results) > 0:                                                         
+        onePagePropertyDetails = results[0]                     
         requiredPropertiesGeneral = onePagePropertyDetails["properties"]    
         for item in requiredPropertiesGeneral.keys():                       
-            if item in ourList:                                             #Compares with outList to decide which to keep and which to disregard
-                allAvailableList.append(item)                               #Creates a final list of available fields
+            if item in ourList:                                             
+                allAvailableList.append(item)                               
     return allAvailableList
 
-
+# print (getAllFields(response))
 
 #takes title name and pageID
 #returns a dictionary with details of the book
@@ -257,8 +317,6 @@ def createBackground(sRGBCode):
         with Image(width= 500, height= 200 , background= bg) as img:
                 img.save(filename = "BackGround.jpg")
     return "BackGround.jpg"    
-
-
 
        
 def addShadow(filePath, background):
@@ -468,24 +526,35 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
         print (r.json())
 
 
-
-
 while True:
-    try:
-        timeEdited = getlastEdited()
-        if timeEdited > checkTime:
-            newTitlesOrISBN = getNewTitlesOrISBN()
-            availableFields = getAllFields()
-            missingProperties = compareLists(availableFields)
-            for item in newTitlesOrISBN:    
-                newGoogleBookDetails = getBookDetails(item)
-                if newGoogleBookDetails is not None:
-                    mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
-                    coverImage = getImage(newGoogleBookDetails)
-                    finalCoverImage = finalImage(coverImage)
-                    coverImageURL = uploadImage (finalCoverImage, mappedDic)
-                    updateDatabase(mappedDic, item, coverImageURL, missingProperties)
-    except Exception as e:
-        print(e)
-
+    newRecords = getDatabaseTimestamp("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain", epoch_time)
+    listNewTokens = getAccessTokens(newRecords)
+    listAccessTokens += listNewTokens
+    # print (listAccessTokens)
+    for i in range (5):
+        for item in listAccessTokens:
+            databaseID = item["database_id"]
+            token = item["access_token"]
+            try:
+                # timeEdited = getlastEdited(databaseID, token)
+                # print (timeEdited)
+                # if timeEdited > checkTime:
+                    # print (True)
+                results = requiredPageDetails(databaseID, token, checkTime)    
+                newTitlesOrISBN = getNewTitlesOrISBN(results)
+                # print (newTitlesOrISBN)
+                availableFields = getAllFields(results)
+                missingProperties = compareLists(availableFields)
+                for item in newTitlesOrISBN:    
+                    newGoogleBookDetails = getBookDetails(item)
+                    if newGoogleBookDetails is not None:
+                        mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
+                        coverImage = getImage(newGoogleBookDetails)
+                        finalCoverImage = finalImage(coverImage)
+                        coverImageURL = uploadImage (finalCoverImage, mappedDic)
+                        updateDatabase(mappedDic, item, coverImageURL, missingProperties)   
+            except Exception as e:
+                print(e)
+    checkTime = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    epoch_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
  
