@@ -2,15 +2,15 @@ import sqlite3
 from sqlite3 import Error
 
 
-def connect(db_filemain):
+def connect(notionReadingList):
     conn = None
     try:
-        conn = sqlite3.connect(db_filemain)
+        conn = sqlite3.connect(notionReadingList)
     except Error as e:
         print (e)
     return conn    
 
-connect("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain")   
+connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")   
 
 
 # def DropTable(db_filemain):
@@ -31,7 +31,7 @@ connect("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain")
 
 
 def createTable():
-    conn = connect("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain")
+    conn = connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")
     cursor_object = conn.cursor()
     table = """CREATE TABLE IF NOT EXISTS USERS (
             access_token VARCHAR(255) NOT NULL,
@@ -53,3 +53,5 @@ def createTable():
     cursor_object.close()
     conn.close()
     return
+
+createTable()

@@ -6,11 +6,13 @@ from requests.auth import HTTPBasicAuth
 import sqlite3
 import datetime
 from datetime import timezone
+from decouple import config
 
 # https://api.notion.com/v1/oauth/authorize?owner=user&client_id=1be7d857-a236-479b-904c-0162aea0b134&response_type=code
 
-def addToDatabase (db_filemain, dictionary, databaseID):
-    conn = sqlite3.connect(db_filemain) 
+conn= sqlite3.connect("/Users/sravanthis/Documents/ReadingList/notionReadingList")
+
+def addToDatabase (dictionary, databaseID):
     cursor_object = conn.cursor()
     access_token = dictionary.get("access_token")
     bot_id = dictionary.get("bot_id")
@@ -22,15 +24,10 @@ def addToDatabase (db_filemain, dictionary, databaseID):
     time_added = datetime.datetime.now(datetime.timezone.utc).timestamp()
     data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, time_added) VALUES (
         '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', {time_added}
-    );"""
-    # try:
+    );"""    #workspace_name has double quotes as a single quote exists in the string itself
     cursor_object.execute(data)  
     conn.commit() 
-    print ("Data inserted")
-    # except:
-    #     print ("Data could not be inserted")    
     cursor_object.close() 
-    conn.close()    
     return
 
 def getDatabaseID(dictionary):
@@ -39,70 +36,31 @@ def getDatabaseID(dictionary):
     database_id = databaseDetails.get("id")
     return database_id
 
-# def putData(db_filemain):
-#     conn = sqlite3.connect(db_filemain) 
-#     cursor_object = conn.cursor()    
-#     data = """INSERT INTO USERS VALUES ("secret_WIAmzqw24tMdTy87rMiqzXEVUFkZ7XPYheZPAAYAqsu", 
-#     "alpha", "c0060ceb-0a3f-45ed-87e1-4365ca944e22", 
-#     "Sravanthi's Notion",
-#     "93bfee1c-9487-4dc2-af8d-97c0055d66f6",
-#     "user",
-#     "bf0d816a-d155-4be4-bc24-3b7920af878d", 
-#     "Sravanthi Sunkaraneni", 
-#     1234.567485);"""
-#     # try:  
-#     cursor_object.execute(data)
-#     conn.commit()
-#     print ("Data inserted to Users")
-#     # except:
-#     #     print ("Data could not be inserted")    
-#     return
-
-# putData("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain")
-
-# def response(db_filemain):
-#     conn = sqlite3.connect(db_filemain) 
-#     cursor_object = conn.cursor() 
-#     response = """SELECT * FROM USERS"""
-#     cursor_object.execute(response)
-#     conn.commit()
-#     c = cursor_object.fetchall()
-#     return c
-
-# r = response("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain") 
-# print (r)
-
 
 app = Flask(__name__)
 
 @app.route("/")
 def getCode():
-    clientID = "1be7d857-a236-479b-904c-0162aea0b134"
-    clientSecret = "secret_kJSpfcsOtrk0s2eKHVwiyiaX0RoAN75gx4CE77HyI4N"
+    clientID = config("NOTIONID")
+    clientSecret = config("NOTIONSECRET")
     code = request.args.get("code", " ")
     tokenUrl = "https://api.notion.com/v1/oauth/token"
     params = {"grant_type": "authorization_code", "code": code}
-    print (code)
     userDetails = requests.post(tokenUrl, 
     data=params, auth = (clientID, clientSecret))
     tokenDetails = userDetails.json()
-    print (tokenDetails)
     token = tokenDetails.get("access_token")
-    print (token)
     databaseIDurl = " https://api.notion.com/v1/search"
     params = {"filter" : {"value" : "database","property" : "object"}, "query" : "Book Shelf"}
     response = requests.post(databaseIDurl, headers= {"Notion-Version": "2022-02-22", "Authorization": "Bearer " + token},  data=params)
     parsedResponse = response.json()
     database_id = getDatabaseID(parsedResponse)
-    print("Database ID received")
-    addToDatabase("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain", tokenDetails, database_id) 
-    print ("Details added to table USERS")
-    return "You have access to the integration!"
+    addToDatabase("/Users/sravanthis/Documents/ReadingList/notionReadingList.db", tokenDetails, database_id) 
+    return render_template("success.html")
 
 @app.route("/home")
 def home():
-    svg = open("Se7enForward.svg").read
-    return render_template("index.html", svg=Markup(svg))
+    return render_template("index.html")
 
 @app.route("/privacy")
 def privacy():

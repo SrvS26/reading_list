@@ -1,2 +1,4 @@
 server/virt/
 .DS_Store
+.env
+_pycache_

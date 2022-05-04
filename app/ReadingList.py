@@ -5,15 +5,12 @@ import pyimgur
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 import sqlite3
+from decouple import config
+import os
 
-# token = "secret_hei5HWtvc97doM7BWwhJBzDppzm9nN9dkaOHevQol2q"
-
-# databaseID = "2a4fdc20740b4f41a87463da37806ece"
-
-checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc).isoformat()
-epoch_time = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc).timestamp()
-
-clientID = "185188df22248e6"
+checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc)
+checkTimeUTC = checkTime.isoformat()
+epoch_time = checkTime.timestamp()
 
 ourList = ["Title", "Publisher", "Authors", "Summary", "Category", "Published", "ISBN_10", "Pages", "ISBN_13", "Summary_extd"]
 
@@ -21,12 +18,14 @@ ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_e
 
 listAccessTokens = []
 
-def getDatabaseTimestamp(db_filemain, databaseCheckedTime):
-    conn = sqlite3.connect(db_filemain)
+conn = sqlite3.connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")
+
+def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
     fetchtime = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
     cursor.execute(fetchtime)
     records = cursor.fetchall()
+    cursor.close()
     return records
 
 def getAccessTokens(records):
@@ -44,64 +43,10 @@ def getAccessTokens(records):
         return listofTokens
     else:
         return listofTokens 
-    
-#Returns last edited time
-
-# def getlastEdited(databaseID, token):  
-#     url = f'https://api.notion.com/v1/databases/{databaseID}'
-#     r = requests.get(url, headers= {
-#         "Authorization": f"Bearer {token}",
-#     "Notion-Version": "2022-02-22"
-#     })
-#     result_dict = r.json()
-#     # print (result_dict)
-#     lastEdited = result_dict["last_edited_time"]
-#     # print (lastEdited)
-#     lastEdited = datetime.datetime.strptime(result_dict["last_edited_time"], "%Y-%m-%dT%H:%M:%S.%f%z")
-#     return lastEdited
-
-# lastEditedTime = getlastEdited("2a4fdc20-740b-4f41-a874-63da37806ece","secret_R3eVdhCWWxfRohmuf39lLjZrNa5ZteKH2jjg5plDobK") 
-# print (lastEditedTime)
-
-#Returns a list of dictionaries, each dictionary contains details of one page in the database 
 
 def requiredPageDetails(databaseID, token, lastCheckedTime): 
     url = f"https://api.notion.com/v1/databases/{databaseID}/query"
-    payload = "{\n    \"filter\": {\n\t\t\t\"and\": [\n\t\t\t\t{\n        \"timestamp\": \"last_edited_time\",\n        \"last_edited_time\": {\n          \"on_or_after\": \"2022-04-30T17:45:00+00:00\"\n        }\n     },\n\t\t\t{\n\t\t\t\t\"or\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"Title\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n\t\t\t\t\t\t}\n\t\t\t\t\t},\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"ISBN_10\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n\t\t\t\t\t\t}\n\t\t\t\t\t},\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\"property\": \"ISBN_13\",\n\t\t\t\t\t\t\"rich_text\": {\n\t\t\t\t\t\t\t\t\"ends_with\": \";\"\n        \t\t}\n\t\t\t\t\t}\t\t\n\t\t\t\t]\n\t\t\t}\t\n\t\t]\t\t\n\t}\n}"
-    # payload = {
-#   "filter": {
-#     "and": [
-#       {
-#         "timestamp": "last_edited_time",
-#         "last_edited_time": {
-#           "on_or_after": "2022-04-30T17:45:00+00:00"
-#         }
-#       },
-#       {
-#         "or": [
-#           {
-#             "property": "Title",
-#             "rich_text": {
-#               "ends_with": ";"
-#             }
-#           },
-#           {
-#             "property": "ISBN_10",
-#             "rich_text": {
-#               "ends_with": ";"
-#             }
-#           },
-#           {
-#             "property": "ISBN_13",
-#             "rich_text": {
-#               "ends_with": ";"
-#             }
-#           }
-#         ]
-#       }
-#     ]
-#   }
-# }
+    payload = "{\"filter\": {\"and\": [{\"timestamp\": \"last_edited_time\",\"last_edited_time\": {  \"on_or_after\": \""+lastCheckedTime+"\"} },{\"or\": [{\"property\": \"Title\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_10\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_13\",\"rich_text\": {\"ends_with\": \";\"}}]}]}}"
     headers = {
         'Content-Type': "application/json",
         'Notion-Version': "2022-02-22",
@@ -111,9 +56,6 @@ def requiredPageDetails(databaseID, token, lastCheckedTime):
     parsed_response = response.json()
     results = parsed_response["results"]   
     return results
-
-# response = requiredPageDetails("2a4fdc20-740b-4f41-a874-63da37806ece", "secret_vvY20viloJbtYaG1gzhCyzcnTWcQMd4IjdIzz0u6ujV", "2022-04-30T17:45:00+00:00")
-# print (response)
 
 def getNewTitlesOrISBN(results):   
     listOfAllTitlesOrISBN = []
@@ -152,20 +94,6 @@ def getNewTitlesOrISBN(results):
                 dicOfTitlesOrISBN["pageID"] = pageID 
                 listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)                                
     return listOfAllTitlesOrISBN
-                                                                                
-# print (getNewTitlesOrISBN(response))
-# returns all the fields available for filling in the database
-
-
-# def getPagePropertyDetails(): 
-#     url = f'https://api.notion.com/v1/databases/{databaseID}/query'
-#     r = requests.post(url, headers= {
-#         "Authorization": f"Bearer {token}",
-#         "Notion-Version": "2022-02-22"
-#     })
-#     result_dict = r.json()
-#     results = result_dict["results"]
-#     return (results)
 
 def getAllFields(results):
     allAvailableList = []
@@ -177,11 +105,6 @@ def getAllFields(results):
                 allAvailableList.append(item)                               
     return allAvailableList
 
-# print (getAllFields(response))
-
-#takes title name and pageID
-#returns a dictionary with details of the book
-
 def getBookDetails(dicOfTitlesOrISBN):
     if dicOfTitlesOrISBN.get("Type") == "Title":
         url = "https://www.googleapis.com/books/v1/volumes?q=" + dicOfTitlesOrISBN["Value"]
@@ -191,7 +114,7 @@ def getBookDetails(dicOfTitlesOrISBN):
     webPageContent = (webPageDetails.content)
     parsedContent = json.loads(webPageContent)                              
     if parsedContent.get("totalItems", 0) > 0:
-        listOfBookResults = parsedContent["items"]                          #List of all book results
+        listOfBookResults = parsedContent["items"]
         firstBookResult = listOfBookResults[0]                              
         bookDetails = firstBookResult.get("volumeInfo")
         requiredBookDetails = ["title", "authors", "publisher", "publishedDate", "description", "industryIdentifiers", "pageCount", "categories", "imageLinks"]
@@ -205,8 +128,6 @@ def getBookDetails(dicOfTitlesOrISBN):
     else:
         cannotRetrieve(dicOfTitlesOrISBN)    
         return None
-
-
 
 def mapOneDicToAnother(ourDic, GoogleBookInfo):
     ourDic["Publisher"] = GoogleBookInfo.get("publisher", "")
@@ -249,12 +170,6 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     ourDic["Category"] = listcategory
     return ourDic
 
-
-
-
-#takes dictionary of book details
-#returns downloaded image or a placeholder image if image is not available
-
 def getImage(AllWeNeed):
     if AllWeNeed.get("imageLinks") != None:
         imageLink = AllWeNeed["imageLinks"]["thumbnail"] 
@@ -266,19 +181,14 @@ def getImage(AllWeNeed):
     else: 
         return "NoImage.jpg"
 
-
-
 def resizeImage(title):
     with Image(filename=title) as img:
         img.resize(height=180)
         img.save(filename="resizedImaged.jpg") 
     return ("resizedImaged.jpg")  
 
-
-
-
 def getsRGB(title): 
-    file = title   #input is filepath
+    file = title 
     with Image(filename= file) as img: 
         img.quantize(5, "srgb", 0, True, False) 
         hist = img.histogram
@@ -287,9 +197,6 @@ def getsRGB(title):
         srgbHighestValue = highestValue[0]
         stringHighestValue = str(srgbHighestValue)
     return (stringHighestValue)   
-
-
-
 
 def alterIfBlack(sRGBString):
     dontWantinString = "srgb%()"
@@ -306,7 +213,6 @@ def alterIfBlack(sRGBString):
         return (r  <= 30 and g <= 30 and b <= 30)     
     except ValueError:
         return True
-
            
 def createBackground(sRGBCode):
     if alterIfBlack(sRGBCode) is True:
@@ -317,8 +223,7 @@ def createBackground(sRGBCode):
         with Image(width= 500, height= 200 , background= bg) as img:
                 img.save(filename = "BackGround.jpg")
     return "BackGround.jpg"    
-
-       
+      
 def addShadow(filePath, background):
     file = filePath
     with Image(filename= file) as img:
@@ -337,10 +242,7 @@ def addShadow(filePath, background):
         img.save(filename="BlurredBackground.jpg")              
     return "BlurredBackground.jpg"
 
-
-
-def finalImage(image):
-    file = image
+def finalImage(file):
     rightSize = resizeImage(file)
     imageColour = getsRGB(file)
     background = createBackground(imageColour)
@@ -348,36 +250,28 @@ def finalImage(image):
     with Image(filename = shadowBackground) as img:
         img.composite(Image(filename = rightSize), gravity = "center")
         img.save(filename = "result.jpg")
+    os.remove(file)    
     return "result.jpg"    
-
 
 def getImageCover(ourDic):
     if ourDic.get("ISBN_13") != None:
         ISBN = ourDic["ISBN_13"]
     elif ourDic.get("ISBN_10") != None:
         ISBN = ourDic["ISBN_10"]
-    return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"        
-
-
+    return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"       #Returns a blank image if the book cover is not available
 
 def uploadImage(image, ourDic):
-    clientid = clientID
-    path = image
-    im = pyimgur.Imgur(clientid)
+    clientID = config("IMGURID")
+    im = pyimgur.Imgur(clientID)
     try:
-        uploaded_image = im.upload_image(path, title="Uploaded with PyImgur")
+        uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
         return (uploaded_image.link)
     except Exception as e:
-        # return "https://cdn.99images.com/photos/wallpapers/creative-graphics/black%20android-iphone-desktop-hd-backgrounds-wallpapers-1080p-4k-j7bml.jpg"
         return getImageCover(ourDic)  
-
-
 
 def compareLists(Theirs):
     finalSet = set(ourList) - set(Theirs)
     return list(finalSet)
-
-
 
 def cannotRetrieve(dicOfTitlesOrISBN):
     url = f'https://api.notion.com/v1/pages/{dicOfTitlesOrISBN["pageID"]}'
@@ -428,10 +322,7 @@ def cannotRetrieve(dicOfTitlesOrISBN):
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
-
-
-
-    
+   
 def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty):
     pageID = dicOfTitlesOrISBN["pageID"]
     url = f'https://api.notion.com/v1/pages/{pageID}'
@@ -527,22 +418,16 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
 
 
 while True:
-    newRecords = getDatabaseTimestamp("/Users/sravanthis/Documents/ReadingList/database/sqlite/db_filemain", epoch_time)
+    newRecords = getDatabaseTimestamp(epoch_time)
     listNewTokens = getAccessTokens(newRecords)
     listAccessTokens += listNewTokens
-    # print (listAccessTokens)
-    for i in range (5):
+    for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for item in listAccessTokens:
             databaseID = item["database_id"]
             token = item["access_token"]
             try:
-                # timeEdited = getlastEdited(databaseID, token)
-                # print (timeEdited)
-                # if timeEdited > checkTime:
-                    # print (True)
-                results = requiredPageDetails(databaseID, token, checkTime)    
+                results = requiredPageDetails(databaseID, token, checkTimeUTC)    
                 newTitlesOrISBN = getNewTitlesOrISBN(results)
-                # print (newTitlesOrISBN)
                 availableFields = getAllFields(results)
                 missingProperties = compareLists(availableFields)
                 for item in newTitlesOrISBN:    
@@ -554,7 +439,9 @@ while True:
                         coverImageURL = uploadImage (finalCoverImage, mappedDic)
                         updateDatabase(mappedDic, item, coverImageURL, missingProperties)   
             except Exception as e:
-                print(e)
-    checkTime = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    epoch_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
- 
+                print(e)    
+    checkTime = datetime.datetime.now(datetime.timezone.utc)           
+    checkTimeUTC = checkTime.isoformat()
+    epoch_time = checkTime.timestamp()
+
+conn.close()
