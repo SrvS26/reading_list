@@ -6,6 +6,7 @@ from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 import sqlite3
 from decouple import config
+import logging
 import os
 
 checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc)
@@ -18,19 +19,27 @@ ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_e
 
 listAccessTokens = []
 
-conn = sqlite3.connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")
+databaseFile = config("databaseFilePath")
+
+logging.debug(f"Connecting to database '{databaseFile}'")
+conn = sqlite3.connect(databaseFile)
+logging.debug(f"Connected to database '{databaseFile}'")
 
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
-    fetchtime = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
-    cursor.execute(fetchtime)
+    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
+    logging.info(f"Attempting to filter and fetch data added after {databaseCheckedTime}")
+    cursor.execute(fetchSpecificDeets)
     records = cursor.fetchall()
+    numberRecords = len(records)
+    logging.info(f"Fetched {numberRecords} rows of data added after {databaseCheckedTime}")
     cursor.close()
     return records
 
 def getAccessTokens(records):
     listofTokens = []
     if len(records) != 0:
+        numRows = 0
         for row in records:
             dicTokens = {}
             access_token = row[0]
@@ -39,12 +48,14 @@ def getAccessTokens(records):
             dicTokens["access_token"] = access_token
             dicTokens ["database_id"] = database_id
             dicTokens ["user_id"] = user_id
-            listofTokens.append(dicTokens)        
+            listofTokens.append(dicTokens)
+            numRows += 1
+        logging.info(f"Processed {numRows} number of rows of data")            
         return listofTokens
     else:
         return listofTokens 
 
-def requiredPageDetails(databaseID, token, lastCheckedTime): 
+def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modified to remove last checked time as it might not really be required
     url = f"https://api.notion.com/v1/databases/{databaseID}/query"
     payload = "{\"filter\": {\"and\": [{\"timestamp\": \"last_edited_time\",\"last_edited_time\": {  \"on_or_after\": \""+lastCheckedTime+"\"} },{\"or\": [{\"property\": \"Title\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_10\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_13\",\"rich_text\": {\"ends_with\": \";\"}}]}]}}"
     headers = {
@@ -52,7 +63,12 @@ def requiredPageDetails(databaseID, token, lastCheckedTime):
         'Notion-Version': "2022-02-22",
         'Authorization': f"Bearer {token}"
         }
-    response = requests.request("POST", url, data=payload, headers=headers)
+    logging.info("Fetching new details from Notion")    
+    try:
+        response = requests.request("POST", url, data=payload, headers=headers)
+        logging.info("Fetched new details from Notion")
+    except Exception as e:
+        logging.exception("Failed to fetch new details from Notion")    
     parsed_response = response.json()
     results = parsed_response["results"]   
     return results
@@ -92,7 +108,10 @@ def getNewTitlesOrISBN(results):
             if len(dicOfTitlesOrISBN) != 0:                        
                 pageID = item["id"]                                         
                 dicOfTitlesOrISBN["pageID"] = pageID 
-                listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)                                
+                listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)
+        logging.info("New titles/ISBN fetched from Notion")                                          
+    else:
+        logging.info("No changes in Notion database/No new titles/ISBN found")      
     return listOfAllTitlesOrISBN
 
 def getAllFields(results):
@@ -102,7 +121,10 @@ def getAllFields(results):
         requiredPropertiesGeneral = onePagePropertyDetails["properties"]    
         for item in requiredPropertiesGeneral.keys():                       
             if item in ourList:                                             
-                allAvailableList.append(item)                               
+                allAvailableList.append(item)   
+        logging.info("All available fields in the Notion database fetched") 
+    else:
+        logging.info("There are no new additions or the notion database "Bookshelf" is empty")                                       
     return allAvailableList
 
 def getBookDetails(dicOfTitlesOrISBN):
@@ -110,7 +132,8 @@ def getBookDetails(dicOfTitlesOrISBN):
         url = "https://www.googleapis.com/books/v1/volumes?q=" + dicOfTitlesOrISBN["Value"]
     elif dicOfTitlesOrISBN.get("Type") == "ISBN_10" or dicOfTitlesOrISBN.get("Type") == "ISBN_13":
         url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"]     
-    webPageDetails = requests.get(url)                                      
+    webPageDetails = requests.get(url)     
+    logging.info(f"Book details fetched from {url}")                                 
     webPageContent = (webPageDetails.content)
     parsedContent = json.loads(webPageContent)                              
     if parsedContent.get("totalItems", 0) > 0:
@@ -126,6 +149,7 @@ def getBookDetails(dicOfTitlesOrISBN):
                 continue    
         return (dicOfRequiredBookDetails)                                      
     else:
+        logging.info(f"No results were found for {url}, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)    
         return None
 
@@ -168,17 +192,19 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
             category["name"] = word
             listcategory.append(category)
     ourDic["Category"] = listcategory
+    logging.info("Details of book assigned to the appropriate fields")
     return ourDic
 
 def getImage(AllWeNeed):
+    title = AllWeNeed["title"]
     if AllWeNeed.get("imageLinks") != None:
         imageLink = AllWeNeed["imageLinks"]["thumbnail"] 
-        title = AllWeNeed["title"]
         r = requests.get(imageLink)
         with open(title, "wb") as f:       
             f.write(r.content)         
         return (f"{title}")  
-    else: 
+    else:
+        logging.info(f"Book {title} has no image") 
         return "NoImage.jpg"
 
 def resizeImage(title):
@@ -267,6 +293,7 @@ def uploadImage(image, ourDic):
         uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
         return (uploaded_image.link)
     except Exception as e:
+        logging.exception("Imgur failed, photo retrieved from covers.openlibrary.org")
         return getImageCover(ourDic)  
 
 def compareLists(Theirs):
@@ -316,7 +343,7 @@ def cannotRetrieve(dicOfTitlesOrISBN):
                     ]
                 }
            }    
-        }    
+        }        
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
@@ -404,17 +431,19 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     }
     for item in deletedProperty:
         del payload["properties"][item]     
-        # print (payload)             
+        # print (payload)     
+    logging.info("Adding New book details to Notion database")         
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
     if r.status_code != 200:
-        print (r.json())
+        # print (r.json())
+        logging.info("Could not update database with new book details, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)
-    else:        
-        print (r.json())
+    # else:        
+        # print (r.json())
 
 
 while True:

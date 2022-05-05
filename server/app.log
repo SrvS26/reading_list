@@ -1,0 +1,10 @@
+04-May-22 17:48:34 - DEBUG - <module>:18 - Connecting to database file '/Users/sravanthis/Documents/ReadingList/notionReadingList
+04-May-22 17:48:34 - DEBUG - <module>:20 - Connected to database file '/Users/sravanthis/Documents/ReadingList/notionReadingList
+04-May-22 17:48:34 - INFO - _log:224 -  * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
+04-May-22 18:04:35 - INFO - getCode:60 - Querying for code
+04-May-22 18:04:35 - INFO - _log:224 - 127.0.0.1 - - [04/May/2022 18:04:35] "GET /?error HTTP/1.1" 200 -
+04-May-22 18:04:46 - INFO - getCode:60 - Querying for code
+04-May-22 18:04:46 - INFO - _log:224 - 127.0.0.1 - - [04/May/2022 18:04:46] "GET /?errorhseugabij=1 HTTP/1.1" 200 -
+04-May-22 18:08:13 - DEBUG - <module>:18 - Connecting to database file '/Users/sravanthis/Documents/ReadingList/notionReadingList
+04-May-22 18:08:13 - DEBUG - <module>:20 - Connected to database file '/Users/sravanthis/Documents/ReadingList/notionReadingList
+04-May-22 18:08:13 - INFO - _log:224 -  * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
