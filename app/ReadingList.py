@@ -21,6 +21,8 @@ listAccessTokens = []
 
 databaseFile = config("databaseFilePath")
 
+logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+
 logging.debug(f"Connecting to database '{databaseFile}'")
 conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
@@ -28,11 +30,11 @@ logging.debug(f"Connected to database '{databaseFile}'")
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
     fetchSpecificDeets = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
-    logging.info(f"Attempting to filter and fetch data added after {databaseCheckedTime}")
+    logging.info(f"Attempting to fetch data added to table USERS after {databaseCheckedTime}")
     cursor.execute(fetchSpecificDeets)
     records = cursor.fetchall()
     numberRecords = len(records)
-    logging.info(f"Fetched {numberRecords} rows of data added after {databaseCheckedTime}")
+    logging.info(f"Fetched {numberRecords} row/s of data added after {databaseCheckedTime} from USERS")
     cursor.close()
     return records
 
@@ -50,7 +52,7 @@ def getAccessTokens(records):
             dicTokens ["user_id"] = user_id
             listofTokens.append(dicTokens)
             numRows += 1
-        logging.info(f"Processed {numRows} number of rows of data")            
+        logging.info(f"Processed {numRows} number of rows of data fetched from USERS")            
         return listofTokens
     else:
         return listofTokens 
@@ -63,12 +65,12 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         'Notion-Version': "2022-02-22",
         'Authorization': f"Bearer {token}"
         }
-    logging.info("Fetching new details from Notion")    
+    logging.info("Applying filters and fetching new additions to BookShelf")    
     try:
         response = requests.request("POST", url, data=payload, headers=headers)
-        logging.info("Fetched new details from Notion")
+        logging.info("Fetched new additions to BookShelf")
     except Exception as e:
-        logging.exception("Failed to fetch new details from Notion")    
+        logging.exception("Failed to fetch new additions to BookShelf")    
     parsed_response = response.json()
     results = parsed_response["results"]   
     return results
@@ -109,9 +111,9 @@ def getNewTitlesOrISBN(results):
                 pageID = item["id"]                                         
                 dicOfTitlesOrISBN["pageID"] = pageID 
                 listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)
-        logging.info("New titles/ISBN fetched from Notion")                                          
+        logging.info("New titles/ISBN extracted from new additions to BookShelf")                                          
     else:
-        logging.info("No changes in Notion database/No new titles/ISBN found")      
+        logging.info("No changes in BookShelf/No new titles/ISBN found")      
     return listOfAllTitlesOrISBN
 
 def getAllFields(results):
@@ -122,9 +124,9 @@ def getAllFields(results):
         for item in requiredPropertiesGeneral.keys():                       
             if item in ourList:                                             
                 allAvailableList.append(item)   
-        logging.info("All available fields in the Notion database fetched") 
+        logging.info("All available fields to fill in BookShelf fetched") 
     else:
-        logging.info("There are no new additions or the notion database "Bookshelf" is empty")                                       
+        logging.info("There are no new additions or the notion database 'Bookshelf' is empty")                                       
     return allAvailableList
 
 def getBookDetails(dicOfTitlesOrISBN):
@@ -133,7 +135,7 @@ def getBookDetails(dicOfTitlesOrISBN):
     elif dicOfTitlesOrISBN.get("Type") == "ISBN_10" or dicOfTitlesOrISBN.get("Type") == "ISBN_13":
         url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"]     
     webPageDetails = requests.get(url)     
-    logging.info(f"Book details fetched from {url}")                                 
+    logging.info(f"Book details fetched from google books {url}")                                 
     webPageContent = (webPageDetails.content)
     parsedContent = json.loads(webPageContent)                              
     if parsedContent.get("totalItems", 0) > 0:
@@ -192,13 +194,14 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
             category["name"] = word
             listcategory.append(category)
     ourDic["Category"] = listcategory
-    logging.info("Details of book assigned to the appropriate fields")
+    logging.info("Google book details matched to appropriate fields in BookShelf")
     return ourDic
 
 def getImage(AllWeNeed):
     title = AllWeNeed["title"]
     if AllWeNeed.get("imageLinks") != None:
         imageLink = AllWeNeed["imageLinks"]["thumbnail"] 
+        logging.info(f"Querying for book {title} cover")
         r = requests.get(imageLink)
         with open(title, "wb") as f:       
             f.write(r.content)         
@@ -276,6 +279,7 @@ def finalImage(file):
     with Image(filename = shadowBackground) as img:
         img.composite(Image(filename = rightSize), gravity = "center")
         img.save(filename = "result.jpg")
+    logging.info("Book cover image created")    
     os.remove(file)    
     return "result.jpg"    
 
@@ -291,9 +295,10 @@ def uploadImage(image, ourDic):
     im = pyimgur.Imgur(clientID)
     try:
         uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
+        logging.info("Cover image uploaded to IMGUR and link fetched")
         return (uploaded_image.link)
     except Exception as e:
-        logging.exception("Imgur failed, photo retrieved from covers.openlibrary.org")
+        logging.exception("Imgur failed, book cover retrieved from covers.openlibrary.org")
         return getImageCover(ourDic)  
 
 def compareLists(Theirs):
@@ -432,18 +437,18 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     for item in deletedProperty:
         del payload["properties"][item]     
         # print (payload)     
-    logging.info("Adding New book details to Notion database")         
+    logging.info("Adding New book details to Bookshelf")         
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
     if r.status_code != 200:
-        # print (r.json())
+        print (r.json())
         logging.info("Could not update database with new book details, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)
-    # else:        
-        # print (r.json())
+    else:        
+        print (r.json())
 
 
 while True:

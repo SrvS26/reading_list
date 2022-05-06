@@ -15,11 +15,11 @@ logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s
 
 databaseFile = config("databaseFilePath")
 
-logging.debug(f"Connecting to database file '{databaseFile}")
-conn= sqlite3.connect(databaseFile)
-logging.debug(f"Connected to database file '{databaseFile}")
 
 def addToDatabase (dictionary, databaseID):
+    logging.debug(f"Connecting to database file '{databaseFile}")
+    conn= sqlite3.connect(databaseFile)
+    logging.debug(f"Connected to database file '{databaseFile}")
     cursor_object = conn.cursor()
     try:
         access_token = dictionary.get("access_token")
@@ -30,13 +30,13 @@ def addToDatabase (dictionary, databaseID):
         user_id = dictionary.get("owner").get("user").get("id")
         user_name = dictionary.get("owner").get("user").get("name")
         time_added = datetime.datetime.now(datetime.timezone.utc).timestamp()
-        logging.info(f"Successfully retrieved access token from dictionary for user {user_id}")
     except Exception as e:
-        logging.exception(f"Could not retrieve access token and other data from dictionary for user {user_id}")    
+        logging.exception(f"Could not retrieve access token and other data from response to query")   
     data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, time_added) VALUES (
         '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', {time_added}
     );"""    #workspace_name has double quotes as a single quote exists in the string itself
     try:
+        logging.info(f"Inserted data into table for user {user_id}")
         cursor_object.execute(data)  
     except Exception as e:
         logging.exception(f"Failed to insert data into table USERS for user {user_id}")    
@@ -82,7 +82,7 @@ def getCode():
             logging.exception("Could not retrieve database ID")        
         parsedResponse = response.json()
         database_id = getDatabaseID(parsedResponse)
-        addToDatabase(databaseFile, tokenDetails, database_id) 
+        addToDatabase(tokenDetails, database_id) 
         return render_template("success.html")
     else:
         if request.args.get("error") is not None:
