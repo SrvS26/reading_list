@@ -38,24 +38,32 @@ def getDatabaseTimestamp(databaseCheckedTime):
     cursor.close()
     return records
 
+def removeFromUsers(revokedUsers):
+    if len(revokedUsers)>0:
+        cursor = conn.cursor()
+        listDatabaseIDs = [tuple(map(lambda x:x["database_id"], revokedUsers))]
+        # print (listDatabaseIDs)
+        cursor.executemany("DELETE FROM USERS WHERE database_id = ?", listDatabaseIDs)
+        logging.infor(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
+        cursor.close()
+    else:
+        logging.info("No users were deleted from USERS for revoking access")    
+        return
+
 def getAccessTokens(records):
     listofTokens = []
-    if len(records) != 0:
-        numRows = 0
-        for row in records:
-            dicTokens = {}
-            access_token = row[0]
-            database_id = row[1]
-            user_id = row[2]
-            dicTokens["access_token"] = access_token
-            dicTokens ["database_id"] = database_id
-            dicTokens ["user_id"] = user_id
-            listofTokens.append(dicTokens)
-            numRows += 1
-        logging.info(f"Processed {numRows} number of rows of data fetched from USERS")            
-        return listofTokens
-    else:
-        return listofTokens 
+    for row in records:
+        dicTokens = {}
+        access_token = row[0]
+        database_id = row[1]
+        user_id = row[2]
+        dicTokens["access_token"] = access_token
+        dicTokens ["database_id"] = database_id
+        dicTokens ["user_id"] = user_id
+        dicTokens ["is_revoked"] = False
+        listofTokens.append(dicTokens)
+    logging.info(f"Processed {len(records)} number of rows of data fetched from USERS")            
+    return listofTokens
 
 def retrieveUserID (condition):
     cursor = conn.cursor()
@@ -79,7 +87,7 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         # print (response)
         if response.status_code == 401:
             logging.warning(f"User {user_id} has revoked access")
-            return None
+            return 401
         elif response.status_code == 200:
             logging.info(f"Fetched new additions to BookShelf for user: {user_id}")
             parsed_response = response.json()
@@ -373,10 +381,8 @@ def cannotRetrieve(dicOfTitlesOrISBN):
     })
     if r.status_code == 401:
         logging.warning("Access has been revoked")
-        return 
     elif r.status_code == 200:
         logging.info("Succesfully removed ';'")
-        return True
 
    
 def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty):
@@ -467,8 +473,9 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
-    if r.status_code != 200:
-        print (r.json())
+    if r.status_code == 401:
+        logging.warning("Access has been revoked")
+    elif r.status_code != 200:
         logging.info("Could not update database with new book details, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)
     else:        
@@ -480,12 +487,14 @@ while True:
     listNewTokens = getAccessTokens(newRecords)
     listAccessTokens += listNewTokens
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
-        for item in listAccessTokens:
-            databaseID = item["database_id"]
-            token = item["access_token"]
+        for index in range(len(listAccessTokens)):
+            databaseID = listAccessTokens[index]["database_id"]
+            token = listAccessTokens[index]["access_token"]
             try:
                 results = requiredPageDetails(databaseID, token, checkTimeUTC)   
-                if results is not None: 
+                if results == 401:
+                    listAccessTokens[index]["is_revoked"] = True
+                elif results is not None: 
                     newTitlesOrISBN = getNewTitlesOrISBN(results)
                     availableFields = getAllFields(results)
                     missingProperties = compareLists(availableFields)
@@ -498,7 +507,11 @@ while True:
                             coverImageURL = uploadImage (finalCoverImage, mappedDic)
                             updateDatabase(mappedDic, item, coverImageURL, missingProperties)               
             except Exception as e:
-                print(e)    
+                print(e) 
+        listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
+        # print (listRevoked)
+        removeFromUsers(listRevoked)
+        listAccessTokens = list(filter(lambda x: x["is_revoked"] is False, listAccessTokens))
     checkTime = datetime.datetime.now(datetime.timezone.utc)           
     checkTimeUTC = checkTime.isoformat()
     epoch_time = checkTime.timestamp()
