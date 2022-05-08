@@ -44,7 +44,7 @@ def removeFromUsers(revokedUsers):
         listDatabaseIDs = [tuple(map(lambda x:x["database_id"], revokedUsers))]
         # print (listDatabaseIDs)
         cursor.executemany("DELETE FROM USERS WHERE database_id = ?", listDatabaseIDs)
-        logging.infor(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
+        logging.info(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
         cursor.close()
     else:
         logging.info("No users were deleted from USERS for revoking access")    

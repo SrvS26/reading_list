@@ -198,3 +198,9 @@ sqlite3.ProgrammingError: SQLite objects created in a thread can only be used in
 06-May-22 19:38:26 - INFO - _log:224 - 127.0.0.1 - - [06/May/2022 19:38:26] "[36mGET /static/Se7enForward.svg HTTP/1.1[0m" 304 -
 06-May-22 19:38:39 - INFO - _log:224 - 127.0.0.1 - - [06/May/2022 19:38:39] "GET /terms HTTP/1.1" 200 -
 06-May-22 19:38:47 - INFO - _log:224 - 127.0.0.1 - - [06/May/2022 19:38:47] "GET /privacy HTTP/1.1" 200 -
+08-May-22 18:25:24 - INFO - _log:224 -  * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
+08-May-22 18:25:26 - INFO - _log:224 - 127.0.0.1 - - [08/May/2022 18:25:26] "GET /home HTTP/1.1" 200 -
+08-May-22 18:25:26 - INFO - _log:224 - 127.0.0.1 - - [08/May/2022 18:25:26] "GET /static/Se7enForward.svg HTTP/1.1" 200 -
+08-May-22 18:28:34 - INFO - _log:224 -  * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
+08-May-22 18:28:38 - INFO - _log:224 - 127.0.0.1 - - [08/May/2022 18:28:38] "GET /home HTTP/1.1" 200 -
+08-May-22 18:28:38 - INFO - _log:224 - 127.0.0.1 - - [08/May/2022 18:28:38] "[36mGET /static/Se7enForward.svg HTTP/1.1[0m" 304 -
