@@ -57,6 +57,13 @@ def getAccessTokens(records):
     else:
         return listofTokens 
 
+def retrieveUserID (condition):
+    cursor = conn.cursor()
+    fetchUserID = f"""SELECT user_id from users where database_id = '{condition}'"""
+    cursor.execute(fetchUserID)
+    user_id = cursor.fetchall()
+    return user_id        
+
 def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modified to remove last checked time as it might not really be required
     url = f"https://api.notion.com/v1/databases/{databaseID}/query"
     payload = "{\"filter\": {\"and\": [{\"timestamp\": \"last_edited_time\",\"last_edited_time\": {  \"on_or_after\": \""+lastCheckedTime+"\"} },{\"or\": [{\"property\": \"Title\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_10\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_13\",\"rich_text\": {\"ends_with\": \";\"}}]}]}}"
@@ -66,14 +73,24 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         'Authorization': f"Bearer {token}"
         }
     logging.info("Applying filters and fetching new additions to BookShelf")    
+    user_id = retrieveUserID(databaseID)
     try:
         response = requests.request("POST", url, data=payload, headers=headers)
-        logging.info("Fetched new additions to BookShelf")
+        # print (response)
+        if response.status_code == 401:
+            logging.warning(f"User {user_id} has revoked access")
+            return None
+        elif response.status_code == 200:
+            logging.info(f"Fetched new additions to BookShelf for user: {user_id}")
+            parsed_response = response.json()
+            results = parsed_response["results"]  
+            return results
+        else:
+            logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
+            return None
     except Exception as e:
-        logging.exception("Failed to fetch new additions to BookShelf")    
-    parsed_response = response.json()
-    results = parsed_response["results"]   
-    return results
+        logging.exception(f"Failed to fetch new details from Bookshelf for user: {user_id}") 
+        return None   
 
 def getNewTitlesOrISBN(results):   
     listOfAllTitlesOrISBN = []
@@ -133,7 +150,7 @@ def getBookDetails(dicOfTitlesOrISBN):
     if dicOfTitlesOrISBN.get("Type") == "Title":
         url = "https://www.googleapis.com/books/v1/volumes?q=" + dicOfTitlesOrISBN["Value"]
     elif dicOfTitlesOrISBN.get("Type") == "ISBN_10" or dicOfTitlesOrISBN.get("Type") == "ISBN_13":
-        url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"]     
+        url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"] 
     webPageDetails = requests.get(url)     
     logging.info(f"Book details fetched from google books {url}")                                 
     webPageContent = (webPageDetails.content)
@@ -151,7 +168,7 @@ def getBookDetails(dicOfTitlesOrISBN):
                 continue    
         return (dicOfRequiredBookDetails)                                      
     else:
-        logging.info(f"No results were found for {url}, only updating title/ISBN")
+        logging.info(f"No google book results were found for {dicOfTitlesOrISBN.get('Type')}: {dicOfTitlesOrISBN.get('Value')} only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)    
         return None
 
@@ -354,6 +371,13 @@ def cannotRetrieve(dicOfTitlesOrISBN):
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
+    if r.status_code == 401:
+        logging.warning("Access has been revoked")
+        return 
+    elif r.status_code == 200:
+        logging.info("Succesfully removed ';'")
+        return True
+
    
 def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty):
     pageID = dicOfTitlesOrISBN["pageID"]
@@ -460,18 +484,19 @@ while True:
             databaseID = item["database_id"]
             token = item["access_token"]
             try:
-                results = requiredPageDetails(databaseID, token, checkTimeUTC)    
-                newTitlesOrISBN = getNewTitlesOrISBN(results)
-                availableFields = getAllFields(results)
-                missingProperties = compareLists(availableFields)
-                for item in newTitlesOrISBN:    
-                    newGoogleBookDetails = getBookDetails(item)
-                    if newGoogleBookDetails is not None:
-                        mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
-                        coverImage = getImage(newGoogleBookDetails)
-                        finalCoverImage = finalImage(coverImage)
-                        coverImageURL = uploadImage (finalCoverImage, mappedDic)
-                        updateDatabase(mappedDic, item, coverImageURL, missingProperties)   
+                results = requiredPageDetails(databaseID, token, checkTimeUTC)   
+                if results is not None: 
+                    newTitlesOrISBN = getNewTitlesOrISBN(results)
+                    availableFields = getAllFields(results)
+                    missingProperties = compareLists(availableFields)
+                    for item in newTitlesOrISBN:    
+                        newGoogleBookDetails = getBookDetails(item)
+                        if newGoogleBookDetails is not None:
+                            mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
+                            coverImage = getImage(newGoogleBookDetails)
+                            finalCoverImage = finalImage(coverImage)
+                            coverImageURL = uploadImage (finalCoverImage, mappedDic)
+                            updateDatabase(mappedDic, item, coverImageURL, missingProperties)               
             except Exception as e:
                 print(e)    
     checkTime = datetime.datetime.now(datetime.timezone.utc)           

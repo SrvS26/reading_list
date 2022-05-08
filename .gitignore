@@ -2,5 +2,5 @@ server/virt/
 .DS_Store
 .env
 _pycache_
-.jpg
-.log
+*.jpg
+*.log
