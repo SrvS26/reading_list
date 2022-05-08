@@ -4,3 +4,4 @@ virt/
 _pycache_
 *.jpg
 *.log
+*.db

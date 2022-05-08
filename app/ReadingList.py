@@ -19,7 +19,7 @@ ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_e
 
 listAccessTokens = []
 
-databaseFile = config("databaseFilePath")
+databaseFile = config("DATABASE_FILE_PATH")
 
 logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
@@ -316,7 +316,7 @@ def getImageCover(ourDic):
     return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"       #Returns a blank image if the book cover is not available
 
 def uploadImage(image, ourDic):
-    clientID = config("IMGURID")
+    clientID = config("IMGUR_CLIENT_ID")
     im = pyimgur.Imgur(clientID)
     try:
         uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")

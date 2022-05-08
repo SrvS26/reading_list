@@ -13,7 +13,7 @@ logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s
 
 # https://api.notion.com/v1/oauth/authorize?owner=user&client_id=1be7d857-a236-479b-904c-0162aea0b134&response_type=code
 
-databaseFile = config("databaseFilePath")
+databaseFile = config("DATABASE_FILE_PATH")
 
 
 def addToDatabase (dictionary, databaseID):
@@ -55,8 +55,8 @@ app = Flask(__name__)
 
 @app.route("/")
 def getCode():
-    clientID = config("NOTIONID")
-    clientSecret = config("NOTIONSECRET")
+    clientID = config("NOTION_CLIENT_ID")
+    clientSecret = config("NOTION_CLIENT_SECRET")
     logging.info("Querying for code")
     code = request.args.get("code", " ")
     if code != " ":
