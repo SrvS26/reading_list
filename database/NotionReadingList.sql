@@ -10,4 +10,9 @@ CREATE TABLE IF NOT EXISTS USERS (
             time_added FLOAT NOT NULL
             );
 
-COMMIT;
+
+CREATE TABLE IF NOT EXISTS IMAGES (
+            ISBN_10 VARCHAR(255),
+            ISBN_13 VARCHAR(255),
+            image_path VARCHAR(255) NOT NULL
+);

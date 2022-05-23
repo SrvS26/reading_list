@@ -21,11 +21,24 @@ listAccessTokens = []
 
 databaseFile = config("DATABASE_FILE_PATH")
 
-logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+imageFolder = config("IMAGE_PATH")
 
-logging.debug(f"Connecting to database '{databaseFile}'")
+url = config("BASE_URL")
+
+# logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+
 conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
+
+# cursor_object = conn.cursor()
+# images = """select * from IMAGES"""
+# users = """select * from USERS"""
+# cursor_object.execute(images)
+# # print (cursor_object.fetchall())
+# cursor_object.execute(users)
+# # print (cursor_object.fetchall())
+
 
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
@@ -35,16 +48,18 @@ def getDatabaseTimestamp(databaseCheckedTime):
     records = cursor.fetchall()
     numberRecords = len(records)
     logging.info(f"Fetched {numberRecords} row/s of data added after {databaseCheckedTime} from USERS")
+    conn.commit()
     cursor.close()
     return records
 
 def removeFromUsers(revokedUsers):
     if len(revokedUsers)>0:
         cursor = conn.cursor()
-        listDatabaseIDs = [tuple(map(lambda x:x["database_id"], revokedUsers))]
-        # print (listDatabaseIDs)
+        listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
+        print (listDatabaseIDs)
         cursor.executemany("DELETE FROM USERS WHERE database_id = ?", listDatabaseIDs)
         logging.info(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
+        conn.commit()
         cursor.close()
     else:
         logging.info("No users were deleted from USERS for revoking access")    
@@ -70,6 +85,7 @@ def retrieveUserID (condition):
     fetchUserID = f"""SELECT user_id from users where database_id = '{condition}'"""
     cursor.execute(fetchUserID)
     user_id = cursor.fetchall()
+    conn.commit()
     return user_id        
 
 def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modified to remove last checked time as it might not really be required
@@ -220,7 +236,25 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
             listcategory.append(category)
     ourDic["Category"] = listcategory
     logging.info("Google book details matched to appropriate fields in BookShelf")
-    return ourDic
+    return ourDic 
+
+def getImageDatabase(ourDic):
+    cursor = conn.cursor()
+    image = f"""SELECT image_path from IMAGES WHERE ISBN_10 = '{ourDic.get("ISBN_15")}' OR ISBN_13 = '{ourDic.get("ISBN_13")}'"""
+    # print(image)
+    cursor.execute(image)
+    imagePath = cursor.fetchone()
+    conn.commit()
+    return imagePath
+
+def insertImage(ourDic):
+    cursor = conn.cursor()
+    imageName = url + "/" + ourDic.get("Title").replace(" ", "") + ".jpg"
+    rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', '{imageName}');""" 
+    # print (rows)
+    cursor.execute(rows)
+    conn.commit()
+    return imageName
 
 def getImage(AllWeNeed):
     title = AllWeNeed["title"]
@@ -230,7 +264,7 @@ def getImage(AllWeNeed):
         r = requests.get(imageLink)
         with open(title, "wb") as f:       
             f.write(r.content)         
-        return (f"{title}")  
+        return (title)  
     else:
         logging.info(f"Book {title} has no image") 
         return "NoImage.jpg"
@@ -296,17 +330,21 @@ def addShadow(filePath, background):
         img.save(filename="BlurredBackground.jpg")              
     return "BlurredBackground.jpg"
 
-def finalImage(file):
+def finalImage(file, ourDic):
+    # print(file)
+    # print (os.getcwd())
+    title = ourDic.get("Title").replace(" ","")
     rightSize = resizeImage(file)
+    # print ("Image edited as required")
     imageColour = getsRGB(file)
     background = createBackground(imageColour)
     shadowBackground = addShadow(rightSize, background)
     with Image(filename = shadowBackground) as img:
         img.composite(Image(filename = rightSize), gravity = "center")
-        img.save(filename = "result.jpg")
+        img.save(filename = f"{imageFolder}/{title}.jpg")
     logging.info("Book cover image created")    
     os.remove(file)    
-    return "result.jpg"    
+    return title    
 
 def getImageCover(ourDic):
     if ourDic.get("ISBN_13") != None:
@@ -315,16 +353,29 @@ def getImageCover(ourDic):
         ISBN = ourDic["ISBN_10"]
     return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"       #Returns a blank image if the book cover is not available
 
-def uploadImage(image, ourDic):
-    clientID = config("IMGUR_CLIENT_ID")
-    im = pyimgur.Imgur(clientID)
-    try:
-        uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
-        logging.info("Cover image uploaded to IMGUR and link fetched")
-        return (uploaded_image.link)
-    except Exception as e:
-        logging.exception("Imgur failed, book cover retrieved from covers.openlibrary.org")
-        return getImageCover(ourDic)  
+# def uploadImage(image, ourDic):
+#     clientID = config("IMGUR_CLIENT_ID")
+#     im = pyimgur.Imgur(clientID)
+#     try:
+#         uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
+#         logging.info("Cover image uploaded to IMGUR and link fetched")
+#         return (uploaded_image.link)
+#     except Exception as e:
+#         logging.exception("Imgur failed, book cover retrieved from covers.openlibrary.org")
+#         return getImageCover(ourDic)  
+
+def uploadImage(ourDic, googleDetails):
+    result = getImageDatabase(ourDic)
+    if result is not None:
+        # print (result)
+        return result[0]
+    else:
+        file = getImage(googleDetails)
+        finalImage(file, ourDic)
+        imageLink = insertImage(ourDic)
+        # print (imageLink)
+        return imageLink
+
 
 def compareLists(Theirs):
     finalSet = set(ourList) - set(Theirs)
@@ -478,16 +529,21 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     elif r.status_code != 200:
         logging.info("Could not update database with new book details, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)
-    else:        
         print (r.json())
-
+    else:        
+        logging.info("Successfully updated")
 
 while True:
     newRecords = getDatabaseTimestamp(epoch_time)
+    checkTime = datetime.datetime.now(datetime.timezone.utc)  
+    if len(newRecords) > 0:  
+        epoch_time = checkTime.timestamp()
     listNewTokens = getAccessTokens(newRecords)
+    # print (listNewTokens)
     listAccessTokens += listNewTokens
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
+            listRevoked = []
             databaseID = listAccessTokens[index]["database_id"]
             token = listAccessTokens[index]["access_token"]
             try:
@@ -502,18 +558,20 @@ while True:
                         newGoogleBookDetails = getBookDetails(item)
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
-                            coverImage = getImage(newGoogleBookDetails)
-                            finalCoverImage = finalImage(coverImage)
-                            coverImageURL = uploadImage (finalCoverImage, mappedDic)
-                            updateDatabase(mappedDic, item, coverImageURL, missingProperties)               
+                            # coverImage = getImage(newGoogleBookDetails)
+                            filePath = uploadImage(mappedDic, newGoogleBookDetails)
+                            # finalCoverImage = finalImage(coverImage)
+                            # coverImageURL = uploadImage (finalCoverImage, mappedDic)
+                            updateDatabase(mappedDic, item, filePath, missingProperties)               
             except Exception as e:
                 print(e) 
+        # print (listAccessTokens)         
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
         # print (listRevoked)
         removeFromUsers(listRevoked)
         listAccessTokens = list(filter(lambda x: x["is_revoked"] is False, listAccessTokens))
-    checkTime = datetime.datetime.now(datetime.timezone.utc)           
+    # checkTime = datetime.datetime.now(datetime.timezone.utc)           
     checkTimeUTC = checkTime.isoformat()
-    epoch_time = checkTime.timestamp()
+    # epoch_time = checkTime.timestamp()
 
 conn.close()

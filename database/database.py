@@ -10,7 +10,17 @@ def connect(notionReadingList):
         print (e)
     return conn    
 
-connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")   
+connect("/Users/sravanthis/Documents/ReadingList/NotionReadingList.db")   
+
+# def connect(sample):
+#     conn = None
+#     try:
+#         conn = sqlite3.connect(sample)
+#     except Error as e:
+#         print (e)
+#     return conn    
+
+# connect("sample.db")  
 
 
 # def DropTable(db_filemain):
@@ -55,3 +65,23 @@ def createTable():
     return
 
 createTable()
+
+def createImageTable():
+    conn = connect("/Users/sravanthis/Documents/ReadingList/notionReadingList.db")
+    cursor_object = conn.cursor()
+    table = """CREATE TABLE IF NOT EXISTS IMAGES (
+            ISBN_10 VARCHAR(255),
+            ISBN_13 VARCHAR(255),
+            image_path VARCHAR(255) NOT NULL
+)"""
+    try:        
+        cursor_object.execute(table)
+        conn.commit()
+        print ("Table IMAGES created")
+    except:
+        print ("Could not create table IMAGES")
+    cursor_object.close()
+    conn.close()
+    return
+
+createImageTable()
