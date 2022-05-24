@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS IMAGES (
             ISBN_13 VARCHAR(255),
             image_path VARCHAR(255) NOT NULL
 );
+

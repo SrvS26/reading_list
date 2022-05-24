@@ -1,7 +1,7 @@
 virt/
 .DS_Store
 .env
-_pycache_
+__pycache__
 *.jpg
 *.log
 *.db

@@ -1,7 +1,6 @@
 import requests
 import json
 import datetime
-import pyimgur
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 import sqlite3
@@ -25,8 +24,8 @@ imageFolder = config("IMAGE_PATH")
 
 url = config("BASE_URL")
 
-# logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+# logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
@@ -39,10 +38,11 @@ logging.debug(f"Connected to database '{databaseFile}'")
 # cursor_object.execute(users)
 # # print (cursor_object.fetchall())
 
+# >= 1 Feb 2022 --> return all new records --> new record > 0 --> checkedtime = current time in seconds --> call getDatabaseTimestamp
 
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
-    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id from USERS where time_added > {databaseCheckedTime}"""
+    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id, time_added from USERS where time_added > {databaseCheckedTime} ORDER BY time_added DESC"""
     logging.info(f"Attempting to fetch data added to table USERS after {databaseCheckedTime}")
     cursor.execute(fetchSpecificDeets)
     records = cursor.fetchall()
@@ -56,7 +56,7 @@ def removeFromUsers(revokedUsers):
     if len(revokedUsers)>0:
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
-        print (listDatabaseIDs)
+        # print (listDatabaseIDs)
         cursor.executemany("DELETE FROM USERS WHERE database_id = ?", listDatabaseIDs)
         logging.info(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
         conn.commit()
@@ -98,6 +98,7 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         }
     logging.info("Applying filters and fetching new additions to BookShelf")    
     user_id = retrieveUserID(databaseID)
+    # print (user_id)
     try:
         response = requests.request("POST", url, data=payload, headers=headers)
         # print (response)
@@ -107,7 +108,9 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         elif response.status_code == 200:
             logging.info(f"Fetched new additions to BookShelf for user: {user_id}")
             parsed_response = response.json()
+            # print(parsed_response)
             results = parsed_response["results"]  
+            # print (results)
             return results
         else:
             logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
@@ -529,15 +532,15 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     elif r.status_code != 200:
         logging.info("Could not update database with new book details, only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)
-        print (r.json())
+        # print (r.json())
     else:        
         logging.info("Successfully updated")
 
 while True:
     newRecords = getDatabaseTimestamp(epoch_time)
-    checkTime = datetime.datetime.now(datetime.timezone.utc)  
+    # checkTime = datetime.datetime.now(datetime.timezone.utc)  
     if len(newRecords) > 0:  
-        epoch_time = checkTime.timestamp()
+        (var1, var2, var3, epoch_time) = newRecords[0]
     listNewTokens = getAccessTokens(newRecords)
     # print (listNewTokens)
     listAccessTokens += listNewTokens
@@ -545,9 +548,11 @@ while True:
         for index in range(len(listAccessTokens)):
             listRevoked = []
             databaseID = listAccessTokens[index]["database_id"]
+            # print (databaseID)
             token = listAccessTokens[index]["access_token"]
             try:
-                results = requiredPageDetails(databaseID, token, checkTimeUTC)   
+                results = requiredPageDetails(databaseID, token, checkTimeUTC)  
+                # print (results) 
                 if results == 401:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
@@ -570,7 +575,7 @@ while True:
         # print (listRevoked)
         removeFromUsers(listRevoked)
         listAccessTokens = list(filter(lambda x: x["is_revoked"] is False, listAccessTokens))
-    # checkTime = datetime.datetime.now(datetime.timezone.utc)           
+    checkTime = datetime.datetime.now(datetime.timezone.utc)           
     checkTimeUTC = checkTime.isoformat()
     # epoch_time = checkTime.timestamp()
 
