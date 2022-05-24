@@ -70,7 +70,7 @@ def getDatabaseID(dictionary):
         logging.error(f"No databases found")
         return None        
 
-@app.route("/")
+@app.route("/reading-list")
 def getCode():
     clientID = config("NOTION_CLIENT_ID")
     clientSecret = config("NOTION_CLIENT_SECRET")
@@ -119,7 +119,7 @@ def getCode():
             return "There appears to be an error. Please try again later."    
 
 
-@app.route("/home")
+@app.route("/")
 def home():
     return render_template("index.html")
 
