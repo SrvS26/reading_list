@@ -24,8 +24,8 @@ imageFolder = config("IMAGE_PATH")
 
 url = config("BASE_URL")
 
-logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-# logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+# logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
@@ -252,8 +252,13 @@ def getImageDatabase(ourDic):
 
 def insertImage(ourDic):
     cursor = conn.cursor()
+    onlyalphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
     imageName = url + "/" + ourDic.get("Title").replace(" ", "") + ".jpg"
-    rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', '{imageName}');""" 
+    finalImageName = ""
+    for i in imageName:
+        if i in onlyalphabets:
+            finalImageName += i    
+    rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', "{finalImageName}");""" 
     # print (rows)
     cursor.execute(rows)
     conn.commit()
