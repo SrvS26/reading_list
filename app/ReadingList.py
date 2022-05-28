@@ -1,3 +1,4 @@
+from doctest import OutputChecker
 import requests
 import json
 import datetime
@@ -253,16 +254,18 @@ def getImageDatabase(ourDic):
 def insertImage(ourDic):
     cursor = conn.cursor()
     onlyalphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
-    imageName = url + "/" + ourDic.get("Title").replace(" ", "") + ".jpg"
-    finalImageName = ""
-    for i in imageName:
+    title = ""
+    for i in ourDic.get("Title"):
         if i in onlyalphabets:
-            finalImageName += i    
-    rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', "{finalImageName}");""" 
-    # print (rows)
-    cursor.execute(rows)
-    conn.commit()
-    return imageName
+            title += i   
+    imageName = url + "/" + title + ".jpg"
+    if ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None: 
+        return imageName        
+    else:    
+        rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', "{imageName}");""" 
+        cursor.execute(rows)
+        conn.commit()
+        return imageName
 
 def getImage(AllWeNeed):
     title = AllWeNeed["title"]
