@@ -1,3 +1,5 @@
+from random import random
+from uuid import UUID, uuid4
 import requests
 import json
 import datetime
@@ -248,14 +250,10 @@ def getImageDatabase(ourDic):
     conn.commit()
     return imagePath
 
-def insertImage(ourDic):
-    cursor = conn.cursor()
-    onlyalphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
-    title = ""
-    for i in ourDic.get("Title"):
-        if i in onlyalphabets:
-            title += i   
+def insertImage(ourDic, title):
+    cursor = conn.cursor()         
     imageName = url + "/" + title + ".jpg"
+    print (imageName)
     if ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None: 
         return imageName        
     else:    
@@ -275,7 +273,7 @@ def getImage(AllWeNeed):
         return (title)  
     else:
         logging.info(f"Book {title} has no image") 
-        return "NoImage.png"
+        return "NI.jpg"
 
 def resizeImage(title):
     with Image(filename=title) as img:
@@ -338,14 +336,9 @@ def addShadow(filePath, background):
         img.save(filename="BlurredBackground.jpg")              
     return "BlurredBackground.jpg"
 
-def finalImage(file, ourDic):
+def finalImage(file, title):
     # print(file)
     # print (os.getcwd())
-    onlyalphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
-    title = ""
-    for i in ourDic.get("Title"):
-        if i in onlyalphabets:
-            title += i   
     rightSize = resizeImage(file)
     # print ("Image edited as required")
     imageColour = getsRGB(file)
@@ -355,7 +348,8 @@ def finalImage(file, ourDic):
         img.composite(Image(filename = rightSize), gravity = "center")
         img.save(filename = f"{imageFolder}/{title}.jpg")
     logging.info("Book cover image created")    
-    os.remove(file)    
+    if file != "NI.jpg":
+        os.remove(file)    
     return title    
 
 def getImageCover(ourDic):
@@ -383,8 +377,14 @@ def uploadImage(ourDic, googleDetails):
         return result[0]
     else:
         file = getImage(googleDetails)
-        finalImage(file, ourDic)
-        imageLink = insertImage(ourDic)
+        title = ourDic.get("Title", "")
+        print (title)
+        finalTitle = "".join(filter(lambda x:x.isalnum(), title))
+        print (finalTitle)
+        if finalTitle == "":
+            finalTitle = uuid4()    
+        finalImage(file, finalTitle)
+        imageLink = insertImage(ourDic, finalTitle)
         # print (imageLink)
         return imageLink
 
@@ -552,17 +552,17 @@ while True:
     if len(newRecords) > 0:  
         (var1, var2, var3, epoch_time) = newRecords[0]
     listNewTokens = getAccessTokens(newRecords)
-    # print (listNewTokens)
+    print (listNewTokens)
     listAccessTokens += listNewTokens
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
             listRevoked = []
             databaseID = listAccessTokens[index]["database_id"]
-            # print (databaseID)
+            print (databaseID)
             token = listAccessTokens[index]["access_token"]
             try:
                 results = requiredPageDetails(databaseID, token, checkTimeUTC)  
-                # print (results) 
+                print (results) 
                 if results == 401:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
@@ -573,6 +573,7 @@ while True:
                         newGoogleBookDetails = getBookDetails(item)
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
+                            print ("we mapped dic")
                             # coverImage = getImage(newGoogleBookDetails)
                             filePath = uploadImage(mappedDic, newGoogleBookDetails)
                             # finalCoverImage = finalImage(coverImage)
