@@ -335,7 +335,11 @@ def addShadow(filePath, background):
 def finalImage(file, ourDic):
     # print(file)
     # print (os.getcwd())
-    title = ourDic.get("Title").replace(" ","")
+    onlyalphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
+    title = ""
+    for i in ourDic.get("Title"):
+        if i in onlyalphabets:
+            title += i   
     rightSize = resizeImage(file)
     # print ("Image edited as required")
     imageColour = getsRGB(file)
