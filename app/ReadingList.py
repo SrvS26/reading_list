@@ -1,4 +1,5 @@
 from random import random
+import string
 from uuid import UUID, uuid4
 import requests
 import json
@@ -109,7 +110,7 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
             logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
             return None
     except Exception as e:
-        logging.exception(f"Failed to fetch new details from Bookshelf for user: {user_id}") 
+        logging.error(f"Failed to fetch new details from Bookshelf for user: {user_id}") 
         return None   
 
 def getNewTitlesOrISBN(results):   
@@ -210,7 +211,7 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     if GoogleBookInfo.get("authors") != None and len(GoogleBookInfo["authors"]) > 0:
         for item in GoogleBookInfo["authors"]:
             authors = {}
-            authors["name"] = item.title()
+            authors["name"] = string.capwords(item)
             listauthors.append(authors)           
     ourDic["Authors"] = listauthors  
     summary = GoogleBookInfo.get("description", "")
@@ -235,7 +236,7 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     if GoogleBookInfo.get("categories") != None and len(GoogleBookInfo["categories"]) > 0:   
         for item in GoogleBookInfo["categories"]: 
             category = {}
-            category["name"] = item.replace(","," ").title()
+            category["name"] = string.capwords(item.replace(","," "))
             listcategory.append(category)
     ourDic["Category"] = listcategory
     logging.info("Google book details matched to appropriate fields in BookShelf")
@@ -253,7 +254,7 @@ def getImageDatabase(ourDic):
 def insertImage(ourDic, title):
     cursor = conn.cursor()         
     imageName = url + "/" + title + ".jpg"
-    print (imageName)
+    # print (imageName)
     if ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None: 
         return imageName        
     else:    
@@ -378,9 +379,9 @@ def uploadImage(ourDic, googleDetails):
     else:
         file = getImage(googleDetails)
         title = ourDic.get("Title", "")
-        print (title)
+        # print (title)
         finalTitle = "".join(filter(lambda x:x.isalnum(), title))
-        print (finalTitle)
+        # print (finalTitle)
         if finalTitle == "":
             finalTitle = uuid4()    
         finalImage(file, finalTitle)
@@ -520,7 +521,7 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
                 "title" : [
                     {
                         "text" : {
-                            "content": availableFields ["Title"].title()
+                            "content": string.capwords(availableFields ["Title"])
                         }
                     }
                 ]
@@ -552,17 +553,17 @@ while True:
     if len(newRecords) > 0:  
         (var1, var2, var3, epoch_time) = newRecords[0]
     listNewTokens = getAccessTokens(newRecords)
-    print (listNewTokens)
+    # print (listNewTokens)
     listAccessTokens += listNewTokens
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
             listRevoked = []
             databaseID = listAccessTokens[index]["database_id"]
-            print (databaseID)
+            # print (databaseID)
             token = listAccessTokens[index]["access_token"]
             try:
                 results = requiredPageDetails(databaseID, token, checkTimeUTC)  
-                print (results) 
+                # print (results) 
                 if results == 401:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
@@ -573,7 +574,6 @@ while True:
                         newGoogleBookDetails = getBookDetails(item)
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
-                            print ("we mapped dic")
                             # coverImage = getImage(newGoogleBookDetails)
                             filePath = uploadImage(mappedDic, newGoogleBookDetails)
                             # finalCoverImage = finalImage(coverImage)
