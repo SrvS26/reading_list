@@ -275,7 +275,7 @@ def getImage(AllWeNeed):
         return (title)  
     else:
         logging.info(f"Book {title} has no image") 
-        return "NoImage.jpg"
+        return "NoImage.png"
 
 def resizeImage(title):
     with Image(filename=title) as img:
