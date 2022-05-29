@@ -1,4 +1,3 @@
-from typing import Set
 import requests
 import json
 import datetime
@@ -209,7 +208,7 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     if GoogleBookInfo.get("authors") != None and len(GoogleBookInfo["authors"]) > 0:
         for item in GoogleBookInfo["authors"]:
             authors = {}
-            authors["name"] = item
+            authors["name"] = item.title()
             listauthors.append(authors)           
     ourDic["Authors"] = listauthors  
     summary = GoogleBookInfo.get("description", "")
@@ -234,7 +233,7 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     if GoogleBookInfo.get("categories") != None and len(GoogleBookInfo["categories"]) > 0:   
         for item in GoogleBookInfo["categories"]: 
             category = {}
-            category["name"] = item.replace(","," ")
+            category["name"] = item.replace(","," ").title()
             listcategory.append(category)
     ourDic["Category"] = listcategory
     logging.info("Google book details matched to appropriate fields in BookShelf")
@@ -463,7 +462,7 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
             "Publisher" : {
                 "rich_text" : [
                     {"text" : {
-                        "content" : availableFields["Publisher"]
+                        "content" : availableFields["Publisher"].title()
                         }
                     }
                 ]
@@ -521,7 +520,7 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
                 "title" : [
                     {
                         "text" : {
-                            "content": availableFields ["Title"]
+                            "content": availableFields ["Title"].title()
                         }
                     }
                 ]
