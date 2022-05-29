@@ -1,4 +1,4 @@
-from doctest import OutputChecker
+from typing import Set
 import requests
 import json
 import datetime
@@ -176,12 +176,15 @@ def getBookDetails(dicOfTitlesOrISBN):
     parsedContent = json.loads(webPageContent)                              
     if parsedContent.get("totalItems", 0) > 0:
         listOfBookResults = parsedContent["items"]
+        categories = getAllCategories(listOfBookResults)
         firstBookResult = listOfBookResults[0]                              
         bookDetails = firstBookResult.get("volumeInfo")
         requiredBookDetails = ["title", "authors", "publisher", "publishedDate", "description", "industryIdentifiers", "pageCount", "categories", "imageLinks"]
         dicOfRequiredBookDetails = {}
-        for item in requiredBookDetails:                                    
-            if item in bookDetails.keys():                                   
+        for item in requiredBookDetails:  
+            if item == "categories":
+                dicOfRequiredBookDetails[item] = categories                                      
+            elif item in bookDetails.keys():                                   
                 dicOfRequiredBookDetails[item] = bookDetails[item]
             else:
                 continue    
@@ -190,6 +193,15 @@ def getBookDetails(dicOfTitlesOrISBN):
         logging.info(f"No google book results were found for {dicOfTitlesOrISBN.get('Type')}: {dicOfTitlesOrISBN.get('Value')} only updating title/ISBN")
         cannotRetrieve(dicOfTitlesOrISBN)    
         return None
+
+def getAllCategories (allResults):
+    allCategories = []
+    for i in allResults:
+        categories = i.get("volumeInfo", {}).get("categories", [])
+        allCategories = allCategories + categories
+    finalCategories = set(allCategories)    
+    return finalCategories    
+
 
 def mapOneDicToAnother(ourDic, GoogleBookInfo):
     ourDic["Publisher"] = GoogleBookInfo.get("publisher", "")
@@ -219,15 +231,10 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     ourDic["Pages"] = GoogleBookInfo.get("pageCount", 0)
     ourDic["Title"] = GoogleBookInfo.get("title", "")
     listcategory = []
-    alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     if GoogleBookInfo.get("categories") != None and len(GoogleBookInfo["categories"]) > 0:   
         for item in GoogleBookInfo["categories"]: 
-            word = ""
-            for i in item:
-                if i in alphabets:
-                    word += i
             category = {}
-            category["name"] = word
+            category["name"] = item.replace(","," ")
             listcategory.append(category)
     ourDic["Category"] = listcategory
     logging.info("Google book details matched to appropriate fields in BookShelf")
@@ -533,7 +540,8 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     if r.status_code == 401:
         logging.warning("Access has been revoked")
     elif r.status_code != 200:
-        logging.info("Could not update database with new book details, only updating title/ISBN")
+        # print (r.json())
+        logging.error("Could not update database with new book details, only updating title/ISBN", r.json())
         cannotRetrieve(dicOfTitlesOrISBN)
         # print (r.json())
     else:        
