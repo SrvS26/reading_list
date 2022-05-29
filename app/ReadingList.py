@@ -31,15 +31,6 @@ logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(
 conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
 
-# cursor_object = conn.cursor()
-# images = """select * from IMAGES"""
-# users = """select * from USERS"""
-# cursor_object.execute(images)
-# # print (cursor_object.fetchall())
-# cursor_object.execute(users)
-# # print (cursor_object.fetchall())
-
-# >= 1 Feb 2022 --> return all new records --> new record > 0 --> checkedtime = current time in seconds --> call getDatabaseTimestamp
 
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
