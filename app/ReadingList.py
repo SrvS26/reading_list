@@ -99,6 +99,9 @@ def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modi
         if response.status_code == 401:
             logging.warning(f"User {user_id} has revoked access")
             return 401
+        elif response.status_code == 404:
+            logging.warning(f"User {user_id} has deleted Bookshelf")
+            return 404  
         elif response.status_code == 200:
             logging.info(f"Fetched new additions to BookShelf for user: {user_id}")
             parsed_response = response.json()
@@ -244,11 +247,12 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
 
 def getImageDatabase(ourDic):
     cursor = conn.cursor()
-    image = f"""SELECT image_path from IMAGES WHERE ISBN_10 = '{ourDic.get("ISBN_15")}' OR ISBN_13 = '{ourDic.get("ISBN_13")}'"""
+    image = f"""SELECT image_path from IMAGES WHERE ISBN_10 = '{ourDic.get("ISBN_10")}' OR ISBN_13 = '{ourDic.get("ISBN_13")}'"""
     # print(image)
     cursor.execute(image)
     imagePath = cursor.fetchone()
     conn.commit()
+    # print (imagePath)
     return imagePath
 
 def insertImage(ourDic, title):
@@ -265,13 +269,16 @@ def insertImage(ourDic, title):
 
 def getImage(AllWeNeed):
     title = AllWeNeed["title"]
+    # print (title)
+    finalTitle = "".join(filter(lambda x:x.isalnum(), title))
+    # print (finalTitle)
     if AllWeNeed.get("imageLinks") != None:
         imageLink = AllWeNeed["imageLinks"]["thumbnail"] 
-        logging.info(f"Querying for book {title} cover")
+        logging.info(f"Querying for book {finalTitle} cover")
         r = requests.get(imageLink)
-        with open(title, "wb") as f:       
-            f.write(r.content)         
-        return (title)  
+        with open(finalTitle, "wb") as f:       
+            f.write(r.content)   
+        return (finalTitle)  
     else:
         logging.info(f"Book {title} has no image") 
         return "NI.jpg"
@@ -564,23 +571,26 @@ while True:
             try:
                 results = requiredPageDetails(databaseID, token, checkTimeUTC)  
                 # print (results) 
-                if results == 401:
+                if results == 401 or results == 404:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
                     newTitlesOrISBN = getNewTitlesOrISBN(results)
                     availableFields = getAllFields(results)
+                    # print (availableFields)
                     missingProperties = compareLists(availableFields)
                     for item in newTitlesOrISBN:    
                         newGoogleBookDetails = getBookDetails(item)
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
+                            # print (mappedDic)
                             # coverImage = getImage(newGoogleBookDetails)
                             filePath = uploadImage(mappedDic, newGoogleBookDetails)
+                            # print (filePath)
                             # finalCoverImage = finalImage(coverImage)
                             # coverImageURL = uploadImage (finalCoverImage, mappedDic)
                             updateDatabase(mappedDic, item, filePath, missingProperties)               
             except Exception as e:
-                print(e) 
+                logging.error(e) 
         # print (listAccessTokens)         
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
         # print (listRevoked)
