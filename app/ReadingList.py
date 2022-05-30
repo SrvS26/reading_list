@@ -267,10 +267,10 @@ def insertImage(ourDic, title):
         conn.commit()
         return imageName
 
-def getImage(AllWeNeed):
+def getImage(AllWeNeed, finalTitle):
     title = AllWeNeed["title"]
     # print (title)
-    finalTitle = "".join(filter(lambda x:x.isalnum(), title))
+    # finalTitle = "".join(filter(lambda x:x.isalnum(), title))
     # print (finalTitle)
     if AllWeNeed.get("imageLinks") != None:
         imageLink = AllWeNeed["imageLinks"]["thumbnail"] 
@@ -384,13 +384,11 @@ def uploadImage(ourDic, googleDetails):
         # print (result)
         return result[0]
     else:
-        file = getImage(googleDetails)
-        title = ourDic.get("Title", "")
-        # print (title)
-        finalTitle = "".join(filter(lambda x:x.isalnum(), title))
-        # print (finalTitle)
+        title = ourDic.get("Title", "") + ourDic.get("ISBN_10", "") + ourDic.get("ISBN_13", "")
+        finalTitle = "".join(filter(lambda x:x.isalnum(), title)) 
         if finalTitle == "":
             finalTitle = uuid4()    
+        file = getImage(googleDetails, finalTitle)
         finalImage(file, finalTitle)
         imageLink = insertImage(ourDic, finalTitle)
         # print (imageLink)

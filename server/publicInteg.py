@@ -90,7 +90,7 @@ def getCode():
             else:
                 logging.info("Successfully retrieved access token using code")     
         except Exception as e:
-            logging.exception(f"Failed due to: {e}")  
+            logging.error(f"Failed due to: {e}")  
             return "There appears to be an error. Please try again later."  
         tokenDetails = userDetails.json()
         token = tokenDetails.get("access_token")
@@ -107,14 +107,14 @@ def getCode():
         parsedResponse = response.json()
         database_id = getDatabaseID(parsedResponse)
         if database_id is None:
-            return "Could not find the Book Shelf database. Please ensure the integration was given to the Book Shelf database"
+            return "Could not find the Book Shelf database. Please ensure the integration was given to the Book Shelf database."
         addToDatabase(tokenDetails, database_id) 
         return render_template("success.html")
     else:
         error = request.args.get("error")
         if error is not None:
             logging.error(f"Notion redirected with an error {error}")
-            return "To access the Reading List integration, please allow access"
+            return "To use the Autofill Book Shelf integration, please allow access."
         else:
             return "There appears to be an error. Please try again later."    
 
