@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS USERS (
             owner_type VARCHAR(255) NOT NULL,
             user_id VARCHAR(255) NOT NULL,
             user_name VARCHAR(255) NOT NULL,
+            user_email VARCHAR(255) NOT NULL,
             time_added FLOAT NOT NULL
             );
 

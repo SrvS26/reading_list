@@ -24,18 +24,19 @@ def addToDatabase (dictionary, databaseID):
     logging.debug(f"Connected to database file '{databaseFile}'")
     cursor_object = conn.cursor()
     try:
-        access_token = dictionary.get("access_token")
-        bot_id = dictionary.get("bot_id")
-        workspace_name = dictionary.get("workspace_name")
-        workspace_id = dictionary.get("workspace_id")
-        owner_type = dictionary.get("owner").get("type")
-        user_id = dictionary.get("owner").get("user").get("id")
-        user_name = dictionary.get("owner").get("user").get("name")
+        access_token = dictionary.get("access_token", "")
+        bot_id = dictionary.get("bot_id", "")
+        workspace_name = dictionary.get("workspace_name", "")
+        workspace_id = dictionary.get("workspace_id", "")
+        owner_type = dictionary.get("owner", {}).get("type", "")
+        user_id = dictionary.get("owner", {}).get("user", {}).get("id", "")
+        user_name = dictionary.get("owner", {}).get("user", {}).get("name", "")
+        user_email = dictionary.get("owner", {}).get("user", {}).get("person", {}).get("email", "")
         time_added = datetime.datetime.now(datetime.timezone.utc).timestamp()
     except Exception as e:
         logging.exception(f"Exception occurred: {e}")   
-    data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, time_added) VALUES (
-        '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', {time_added}
+    data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, user_email, time_added) VALUES (
+        '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', '{user_email}', {time_added}
     );"""    #workspace_name has double quotes as a single quote exists in the string itself
     try:
         cursor_object.execute(data)  
