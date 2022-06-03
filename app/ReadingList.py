@@ -36,7 +36,7 @@ logging.debug(f"Connected to database '{databaseFile}'")
 
 def getDatabaseTimestamp(databaseCheckedTime):
     cursor = conn.cursor()
-    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id, time_added from USERS where time_added > {databaseCheckedTime} ORDER BY time_added DESC"""
+    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id, time_added from USERS WHERE is_validated = 1 AND time_added > {databaseCheckedTime} ORDER BY time_added DESC"""
     logging.info(f"Attempting to fetch data added to table USERS after {databaseCheckedTime}")
     cursor.execute(fetchSpecificDeets)
     records = cursor.fetchall()
@@ -51,8 +51,8 @@ def removeFromUsers(revokedUsers):
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
         # print (listDatabaseIDs)
-        cursor.executemany("DELETE FROM USERS WHERE database_id = ?", listDatabaseIDs)
-        logging.info(f"Deleted {len(revokedUsers)} number of revoked users from USERS")
+        cursor.executemany("UPDATE USERS SET is_revoked = 1 WHERE database_id = ?", listDatabaseIDs)
+        logging.info(f"Updated {len(revokedUsers)} number of is_revoked to 1 in USERS")
         conn.commit()
         cursor.close()
     else:

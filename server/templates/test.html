@@ -22,8 +22,9 @@
     .container{
       width: 100%;
       text-align: center;
+      
+    }  
     </style>
-   
     <!-- Bootstrap CSS -->
     <link rel="icon" type="image/x-icon" href="{{url_for('static', filename='favicon.ico')}}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
@@ -33,7 +34,12 @@
   <body style="background-color: #000000;">
     <div class="container">
       <img src="{{url_for('static', filename='Se7enForward.svg')}}" alt="Se7evn Forward Logo" width="300" height="300"><br><br><br>
-      <h1 class="success">YOU HAVE ACCESS TO THE INTEGRATION!</h1>
+      <h1 class="success">YOU ARE ONE STEP AWAY FROM USING "AUTOFILL MY BOOKSHELF"!</h1><br><br><br>
+      <form action="{{ url_for('verify', userId = userId)}}" method="post">
+            <label style="font-family: 'Prompt', sans-serif; color: #ffffff;" for="licenseKey">LICENSE KEY:</label>
+            <input style="border: #ffffff; width: 500px; font-size: large; padding: auto;" type="text" id="licenseKey" name="license_key" required><br><br>
+            <input style="background-color: aliceblue; font-family: 'Prompt', sans-serif; color:#7d9ec0; size: 30px; padding-left: 15px; padding-right: 15px;" type="submit" value="SUBMIT">
+          </form>
       <!-- Content here -->
     </div>
     <!-- Optional JavaScript -->
