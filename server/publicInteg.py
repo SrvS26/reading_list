@@ -24,7 +24,6 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 
-
 def addToDatabase (dictionary, databaseID):
     conn = sqlite3.connect(databaseFile)
     logging.debug(f"Connected to database file '{databaseFile}'")
@@ -43,7 +42,7 @@ def addToDatabase (dictionary, databaseID):
         logging.exception(f"Exception occurred: {e}")   
     data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, user_email, time_added) VALUES (
         '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', '{user_email}', {time_added}
-    );"""    #workspace_name has double quotes as a single quote exists in the string itself
+    ) ON CONFLICT (user_id) DO UPDATE SET access_token = '{access_token}' WHERE is_revoked = 1;"""    #workspace_name has double quotes as a single quote exists in the string itself
     try:
         cursor_object.execute(data)  
         logging.info(f"Inserted data into table for user {user_id}")
@@ -180,8 +179,9 @@ def verify(userId):
     verifyLicenseUrl = "https://api.gumroad.com/v2/licenses/verify"
     verify = requests.post(verifyLicenseUrl, headers= {"Authorization": "Bearer " + gumroadToken}, data=params)
     parsed = verify.json()
-    parsed =logging.info(parsed)  
+    logging.info(parsed)  
     numberUses = parsed.get("uses")
+    print (numberUses)
     if verify.status_code == 200:
         if numberUses <= 30:
             logging.info("License key verified with Gumroad")
