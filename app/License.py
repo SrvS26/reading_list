@@ -130,11 +130,14 @@ def verifyLicenseKey(licenseKey):
     except Exception as e:
         logging.error(f"Gumroad license key query failed: {e}")
         return (None, 104)
+    # return ({
+	# "success": True,
+	# "uses": 1}, 100)
 
 def verifiedResponse(response, userId, licenseKey):
     if response.get("success") == True:
         numUses = response.get("uses", None)
-        if numUses < 1:
+        if numUses == 1:
             updateValidated(userId)
             addLicenseKey(userId, licenseKey)
             return 100
@@ -184,6 +187,7 @@ def error(pageID, value, token):
 while True:
     listRevoked = getRevoked()
     listTokens = fetchToken()
+    print (listTokens)
     for token in listTokens:
         try: 
             databaseID, userID = fetchID(token)
@@ -198,8 +202,7 @@ while True:
                         error (pageID, response[1], token)    
         except Exception as e:
             logging.exception(e)                
-    listTokens = []
-    listRevoked = []
+    print (listTokens)
 
         
 
