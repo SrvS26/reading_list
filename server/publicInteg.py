@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(filename='server.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 # logging.basicConfig(filename='server.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
-errors = {100: "There appears to be an error. Please try again later.", 101: "Could not find the Book Shelf database. Please ensure the integration was given access to the Book Shelf database." , 102 :"To use the Autofill Book Shelf integration, please allow access." , 103 : "User not found", 104: "You have not granted access to the integration", 105: "Incorrect License Key", 106: "Could not verify purchase"}
+errors = {100: "There appears to be an error. Please try again later.", 101: "Could not find the Bookshelf database. Please ensure Autofill Bookshelf was given access to the Bookshelf database." , 102 :"To use Autofill Bookshelf, please allow access." , 103 : "User not found", 104: "You have not granted access to Autofill Bookshelf", 105: "Incorrect License Key", 106: "Could not verify purchase"}
 
 databaseFile = config("DATABASE_FILE_PATH")
 clientID = config("NOTION_CLIENT_ID")
@@ -47,7 +47,7 @@ def addToDatabase (dictionary, databaseID):
         logging.info(f"Inserted data into table for user {user_id}")
         conn.commit()   
     except Exception as e:
-        logging.error(f"Insert failed for {user_id}: {e}")    
+        logging.exception(f"Insert failed for {user_id}: {e}")    
     cursor_object.close() 
     return
 
@@ -61,11 +61,11 @@ def getDatabaseID(dictionary):
             except Exception as e:
                 logging.exception(f"Could not get database details: {e}, {dictionary}")
                 databaseTitle = None
-            if databaseTitle == "Book Shelf":
+            if databaseTitle == "Bookshelf":
                 databaseDetails = item
                 break
         if databaseDetails is None:
-            logging.error(f"Book Shelf not found")
+            logging.error(f"Bookshelf not found")
             return None        
         else:    
             database_id = databaseDetails.get("id")
@@ -97,7 +97,7 @@ def getCode():
         tokenDetails = userDetails.json()
         token = tokenDetails.get("access_token")
         databaseIDurl = " https://api.notion.com/v1/search"
-        params = {"filter" : {"value" : "database","property" : "object"}, "query" : "Book Shelf"}
+        params = {"filter" : {"value" : "database","property" : "object"}, "query" : "Bookshelf"}
         logging.info("Querying for database ID")
         try:
             response = requests.post(databaseIDurl, headers= {"Notion-Version": "2022-02-22", "Authorization": "Bearer " + token},  data=params)
@@ -123,7 +123,7 @@ def getCode():
     
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("success.html")
 
 @app.route("/privacy")
 def privacy():
