@@ -104,11 +104,9 @@ def fetchLicenseKey(databaseID, token):
             licenseList = results.get("properties", {}).get("License Key", {}).get("title", [])
             if len(licenseList)>0:
                 licenseKey = licenseList[0].get("plain_text", None)
-                print (licenseKey)
                 if licenseKey[-1] == ";":
                     licenseKey = licenseKey[:-1]    
                     pageID = results.get("id", None)
-                    print (licenseKey, pageID)
                     return licenseKey, pageID
                 else:
                     return None, None        
@@ -202,7 +200,6 @@ def error(pageID, value, token, licenseKey):
 while True:
     listRevoked = getRevoked()
     listTokens = fetchToken()
-    print (listTokens)
     for token in listTokens:
         try: 
             databaseID, userID = fetchID(token)
