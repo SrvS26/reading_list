@@ -104,8 +104,14 @@ def fetchLicenseKey(databaseID, token):
             licenseList = results.get("properties", {}).get("License Key", {}).get("title", [])
             if len(licenseList)>0:
                 licenseKey = licenseList[0].get("plain_text", None)
-                pageID = results.get("id", None)
-                return licenseKey, pageID
+                print (licenseKey)
+                if licenseKey[-1] == ";":
+                    licenseKey = licenseKey[:-1]    
+                    pageID = results.get("id", None)
+                    print (licenseKey, pageID)
+                    return licenseKey, pageID
+                else:
+                    return None, None        
             else:
                 return None, None
         else:
@@ -155,7 +161,7 @@ def verifiedResponse(response, userId, licenseKey):
     else:
         return 104    
 
-def error(pageID, value, token):
+def error(pageID, value, token, licenseKey):
     url = f'https://api.notion.com/v1/pages/{pageID}'
     message = errors[value]
     payload = {
@@ -164,6 +170,15 @@ def error(pageID, value, token):
                     "rich_text" : [
                         {"text" : {
                             "content" : message
+                        }
+                    }
+                ]
+            },
+                "License Key": {
+                    "title" : [
+                    {
+                        "text" : {
+                            "content": licenseKey
                         }
                     }
                 ]
@@ -197,12 +212,11 @@ while True:
                     response = verifyLicenseKey(licenseKey)
                     if response[0] is not None:
                         value = verifiedResponse(response[0], userID, licenseKey)
-                        error (pageID, value, token)
+                        error (pageID, value, token, licenseKey)
                     else:
-                        error (pageID, response[1], token)    
+                        error (pageID, response[1], token, licenseKey)    
         except Exception as e:
             logging.exception(e)                
-    print (listTokens)
 
         
 
