@@ -10,15 +10,14 @@ from datetime import timezone
 from decouple import config
 import logging
 
-# logging.basicConfig(filename='server.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-logging.basicConfig(filename='server.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(filename='server.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+# logging.basicConfig(filename='server.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 errors = {100: "There appears to be an error. Please try again later.", 101: "Could not find the Book Shelf database. Please ensure the integration was given access to the Book Shelf database." , 102 :"To use the Autofill Book Shelf integration, please allow access." , 103 : "User not found", 104: "You have not granted access to the integration", 105: "Incorrect License Key", 106: "Could not verify purchase"}
 
 databaseFile = config("DATABASE_FILE_PATH")
 clientID = config("NOTION_CLIENT_ID")
 clientSecret = config("NOTION_CLIENT_SECRET")
-gumroadToken = config("GUMROAD_TOKEN")
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
@@ -52,19 +51,6 @@ def addToDatabase (dictionary, databaseID):
     cursor_object.close() 
     return
 
-def storeLicenseKey(licenseKey):
-    conn = sqlite3.connect(databaseFile)   
-    cursor_object = conn.cursor()
-    data = f"""INSERT INTO LICENSE_KEYS (license_key, validated) VALUES ({licenseKey}, 0);"""
-    try:
-        cursor_object.execute(data)
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Failed to insert license key: {e}")
-    cursor_object.close()        
-    return
-    
-
 def getDatabaseID(dictionary):
     results = dictionary.get("results")
     if results is not None:
@@ -87,17 +73,6 @@ def getDatabaseID(dictionary):
     else:
         logging.error(f"No databases found")
         return None        
-
-@app.route("/gumroad")
-def displayLinks():
-    sale_id = request.args.get("sale_id", None)   #Handle None  To-do
-    if sale_id is None:
-        return "You seem to have reached this page by mistake"
-    return redirect (url_for('links', sale_id = sale_id))
-
-@app.route("/links")
-def links():
-    return render_template("links.html", client_id = clientID )  
 
 @app.route("/reading-list")
 def getCode():
@@ -136,9 +111,7 @@ def getCode():
         if database_id is None:
             return redirect(url_for("error", error = 101))
         addToDatabase(tokenDetails, database_id) 
-        user_id = tokenDetails.get("owner", {}).get("user", {}).get("id")
-        # workspaceName = tokenDetails.get("workspace_name")
-        return redirect(url_for("user", userId = user_id))
+        return render_template("success.html")
     else:
         error = request.args.get("error")
         if error is not None:
@@ -146,67 +119,6 @@ def getCode():
             return redirect(url_for("error", error = 102))
         else:
             return redirect(url_for("error", error = 100))    
-
-@app.route("/user/<userId>")
-def user(userId):
-    userId = str(userId)
-    conn = sqlite3.connect(databaseFile)
-    cursor = conn.cursor()
-    logging.info("connected to database")
-    data = f"""SELECT workspace_name FROM USERS WHERE user_id = '{userId}'"""
-    try:
-        cursor.execute(data)
-        workspaceTuple = cursor.fetchone()
-        workspaceName = workspaceTuple[0].upper()
-        if len(workspaceName) != 0:
-            return render_template("license.html", userId = userId, workspaceName = workspaceName)
-        else:
-            return redirect(url_for("error", error = 103))
-    except Exception as e:
-        logging.error("Could not fetch workspace name:", e)
-        return redirect(url_for("error", error = 104))
-
-@app.route("/verify/<userId>", methods = ["POST"])
-def verify(userId):
-    conn = sqlite3.connect(databaseFile)   
-    cursor = conn.cursor()
-    try:
-        licenseKeyUser = request.form.get("license_key")
-    except KeyError:
-        return "You have not entered a License Key"
-    params = {"product_permalink": "mlkqzw", "license_key" : licenseKeyUser}
-    logging.info("licenkey is: ", licenseKeyUser)
-    verifyLicenseUrl = "https://api.gumroad.com/v2/licenses/verify"
-    verify = requests.post(verifyLicenseUrl, headers= {"Authorization": "Bearer " + gumroadToken}, data=params)
-    parsed = verify.json()
-    logging.info(parsed)  
-    numberUses = parsed.get("uses")
-    print (numberUses)
-    if verify.status_code == 200:
-        if numberUses <= 30:
-            logging.info("License key verified with Gumroad")
-            data = f"""UPDATE USERS SET license_key = '{licenseKeyUser}', is_validated = 1 WHERE user_id = '{userId}'"""
-            cursor.execute(data)
-            conn.commit()
-            return render_template ("success.html")
-        elif numberUses > 1:
-            data = f"""SELECT is_revoked FROM USERS WHERE user_id = '{userId}' AND license_key = '{licenseKeyUser}'"""
-            cursor.execute(data)
-            is_revokedList = cursor.fetchone()
-            if is_revokedList is None:
-                return redirect(url_for("error", error = 105))
-            else:    
-                is_revoked = is_revokedList[0]
-                conn.commit()  
-            if is_revoked == 1:
-                data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0 WHERE user_id = '{userId}'"""
-                cursor.execute(data)
-                conn.commit()    
-                return render_template("success.html")
-            else:
-                return redirect(url_for("error", error = 105 ))    
-    else:    
-        return redirect(url_for("error", error = 106))
 
     
 @app.route("/")

@@ -51,7 +51,7 @@ def removeFromUsers(revokedUsers):
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
         # print (listDatabaseIDs)
-        cursor.executemany("UPDATE USERS SET is_revoked = 1 WHERE database_id = ?", listDatabaseIDs)
+        cursor.executemany("UPDATE USERS SET is_revoked = 1, is_validated = 0 WHERE database_id = ?", listDatabaseIDs)
         logging.info(f"Updated {len(revokedUsers)} number of is_revoked to 1 in USERS")
         conn.commit()
         cursor.close()
