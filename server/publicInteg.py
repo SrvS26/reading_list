@@ -111,7 +111,7 @@ def getCode():
         if database_id is None:
             return redirect(url_for("error", error = 101))
         addToDatabase(tokenDetails, database_id) 
-        return render_template("success.html")
+        return redirect(url_for("success"))
     else:
         error = request.args.get("error")
         if error is not None:
@@ -123,7 +123,11 @@ def getCode():
     
 @app.route("/")
 def home():
-    return render_template("success.html")
+    return render_template("index.html")
+
+@app.route("/success")
+def success():
+    return render_template("success.html")    
 
 @app.route("/privacy")
 def privacy():
