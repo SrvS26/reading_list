@@ -7,6 +7,7 @@ import logging
 logging.basicConfig(filename='license.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 databaseFile = config("DATABASE_FILE_PATH")
 gumroadToken = config("GUMROAD_TOKEN")
+gumroadProductId = config("GUMROAD_PRODUCT_ID")
 errors = {100:"Success" ,101: "The license key is already in use", 102: "Invalid license key", 103: "Your access has been reinstated", 104: "An error occurred. Please try again later"}
 conn = sqlite3.connect(databaseFile)
 
@@ -116,7 +117,7 @@ def fetchLicenseKey(databaseID, token):
 
 def verifyLicenseKey(licenseKey):
     url = "https://api.gumroad.com/v2/licenses/verify"
-    params = {"product_permalink": "mlkqzw", "license_key" : licenseKey}
+    params = {"product_permalink": gumroadProductId, "license_key" : licenseKey}
     try:
         verify = requests.post(url, headers= {"Authorization": "Bearer " + gumroadToken}, data=params)
         statusCode = verify.status_code
