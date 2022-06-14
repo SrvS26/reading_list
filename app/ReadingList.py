@@ -536,7 +536,6 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
 
 while True:
     newRecords = getValidated()
-    print (newRecords)
     listAccessTokens = getAccessTokens(newRecords)
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
