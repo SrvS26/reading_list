@@ -3,6 +3,7 @@ import sqlite3
 from decouple import config
 import requests
 import logging
+import time
 
 logging.basicConfig(filename='license.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 databaseFile = config("DATABASE_FILE_PATH")
@@ -48,16 +49,6 @@ def updateValidated(userId):
         logging.exception(f"Could not update is_validated for {userId}: {e}")
     conn.commit()
     return
-
-# def updateRevoked(userId):
-#     cursor = conn.cursor()
-#     data = f"""UPDATE USERS SET is_revoked = 0 WHERE user_id = '{userId}'"""
-#     try:
-#         cursor.execute(data)
-#     except Exception as e:
-#         logging.exception (f"Could not update is_revoked for {userId}: {e}")    
-#     conn.commit()
-#     return
 
 def addLicenseKey(userId, licenseKey):
     cursor = conn.cursor()
@@ -134,9 +125,6 @@ def verifyLicenseKey(licenseKey):
     except Exception as e:
         logging.error(f"Gumroad license key query failed: {e}")
         return (None, 104)
-    # return ({
-	# "success": True,
-	# "uses": 1}, 100)
 
 def verifiedResponse(response, userId, licenseKey):
     if response.get("success") == True:
@@ -212,7 +200,8 @@ while True:
                     else:
                         error (pageID, response[1], token, licenseKey)    
         except Exception as e:
-            logging.exception(e)                
+            logging.exception(e)  
+    time.sleep(5)                      
 
         
 

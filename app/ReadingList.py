@@ -3,7 +3,7 @@ import string
 from uuid import UUID, uuid4
 import requests
 import json
-import datetime
+import time
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 import sqlite3
@@ -561,5 +561,6 @@ while True:
                 logging.error(e) 
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
         removeFromUsers(listRevoked)
+        time.sleep(5)
 
 conn.close()
