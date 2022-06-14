@@ -11,15 +11,9 @@ from decouple import config
 import logging
 import os
 
-checkTime = datetime.datetime(2022, 2, 1, 0, 0, 0, 0, tzinfo=datetime.timezone.utc)
-checkTimeUTC = checkTime.isoformat()
-epoch_time = checkTime.timestamp()
-
 ourList = ["Title", "Publisher", "Authors", "Summary", "Category", "Published", "ISBN_10", "Pages", "ISBN_13", "Summary_extd"]
 
 ourDic = {"Title": "", "Publisher": "", "Authors": "", "Summary": "", "Summary_extd": "", "Category":"", "Published": "", "ISBN_10": "", "Pages": None, "ISBN_13":""}
-
-listAccessTokens = []
 
 databaseFile = config("DATABASE_FILE_PATH")
 
@@ -34,14 +28,14 @@ conn = sqlite3.connect(databaseFile)
 logging.debug(f"Connected to database '{databaseFile}'")
 
 
-def getDatabaseTimestamp(databaseCheckedTime):
+def getValidated():
     cursor = conn.cursor()
-    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id, time_added from USERS WHERE is_validated = 1 AND time_added > {databaseCheckedTime} ORDER BY time_added DESC"""
-    logging.info(f"Attempting to fetch data added to table USERS after {databaseCheckedTime}")
+    fetchSpecificDeets = f"""SELECT access_token, database_id, user_id from USERS WHERE is_validated = 1"""
+    logging.info(f"Attempting to fetch data from validated users from USERS")
     cursor.execute(fetchSpecificDeets)
     records = cursor.fetchall()
     numberRecords = len(records)
-    logging.info(f"Fetched {numberRecords} row/s of data added after {databaseCheckedTime} from USERS")
+    logging.info(f"Fetched {numberRecords} row/s of data from USERS")
     conn.commit()
     cursor.close()
     return records
@@ -50,7 +44,6 @@ def removeFromUsers(revokedUsers):
     if len(revokedUsers)>0:
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
-        # print (listDatabaseIDs)
         cursor.executemany("UPDATE USERS SET is_revoked = 1, is_validated = 0 WHERE database_id = ?", listDatabaseIDs)
         logging.info(f"Updated {len(revokedUsers)} number of is_revoked to 1 in USERS")
         conn.commit()
@@ -82,9 +75,9 @@ def retrieveUserID (condition):
     conn.commit()
     return user_id        
 
-def requiredPageDetails(databaseID, token, lastCheckedTime): #Filter can be modified to remove last checked time as it might not really be required
+def requiredPageDetails(databaseID, token): #Filter can be modified to remove last checked time as it might not really be required
     url = f"https://api.notion.com/v1/databases/{databaseID}/query"
-    payload = "{\"filter\": {\"and\": [{\"timestamp\": \"last_edited_time\",\"last_edited_time\": {  \"on_or_after\": \""+lastCheckedTime+"\"} },{\"or\": [{\"property\": \"Title\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_10\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_13\",\"rich_text\": {\"ends_with\": \";\"}}]}]}}"
+    payload = "{\"filter\": {\"or\": [{\"property\": \"Title\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_10\",\"rich_text\": {\"ends_with\": \";\"}},{\"property\": \"ISBN_13\",\"rich_text\": {\"ends_with\": \";\"}}]}}"
     headers = {
         'Content-Type': "application/json",
         'Notion-Version': "2022-02-22",
@@ -367,17 +360,6 @@ def getImageCover(ourDic):
         ISBN = ourDic["ISBN_10"]
     return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"       #Returns a blank image if the book cover is not available
 
-# def uploadImage(image, ourDic):
-#     clientID = config("IMGUR_CLIENT_ID")
-#     im = pyimgur.Imgur(clientID)
-#     try:
-#         uploaded_image = im.upload_image(image, title="Uploaded with PyImgur")
-#         logging.info("Cover image uploaded to IMGUR and link fetched")
-#         return (uploaded_image.link)
-#     except Exception as e:
-#         logging.exception("Imgur failed, book cover retrieved from covers.openlibrary.org")
-#         return getImageCover(ourDic)  
-
 def uploadImage(ourDic, googleDetails):
     result = getImageDatabase(ourDic)
     if result is not None:
@@ -553,49 +535,31 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
         logging.info("Successfully updated")
 
 while True:
-    newRecords = getDatabaseTimestamp(epoch_time)
-    # checkTime = datetime.datetime.now(datetime.timezone.utc)  
-    if len(newRecords) > 0:  
-        (var1, var2, var3, epoch_time) = newRecords[0]
-    listNewTokens = getAccessTokens(newRecords)
-    # print (listNewTokens)
-    listAccessTokens += listNewTokens
+    newRecords = getValidated()
+    print (newRecords)
+    listAccessTokens = getAccessTokens(newRecords)
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
             listRevoked = []
             databaseID = listAccessTokens[index]["database_id"]
-            # print (databaseID)
             token = listAccessTokens[index]["access_token"]
             try:
-                results = requiredPageDetails(databaseID, token, checkTimeUTC)  
-                # print (results) 
+                results = requiredPageDetails(databaseID, token)  
                 if results == 401 or results == 404:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
                     newTitlesOrISBN = getNewTitlesOrISBN(results)
                     availableFields = getAllFields(results)
-                    # print (availableFields)
                     missingProperties = compareLists(availableFields)
                     for item in newTitlesOrISBN:    
                         newGoogleBookDetails = getBookDetails(item)
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
-                            # print (mappedDic)
-                            # coverImage = getImage(newGoogleBookDetails)
                             filePath = uploadImage(mappedDic, newGoogleBookDetails)
-                            # print (filePath)
-                            # finalCoverImage = finalImage(coverImage)
-                            # coverImageURL = uploadImage (finalCoverImage, mappedDic)
                             updateDatabase(mappedDic, item, filePath, missingProperties)               
             except Exception as e:
                 logging.error(e) 
-        # print (listAccessTokens)         
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
-        # print (listRevoked)
         removeFromUsers(listRevoked)
-        listAccessTokens = list(filter(lambda x: x["is_revoked"] is False, listAccessTokens))
-    checkTime = datetime.datetime.now(datetime.timezone.utc)           
-    checkTimeUTC = checkTime.isoformat()
-    # epoch_time = checkTime.timestamp()
 
 conn.close()

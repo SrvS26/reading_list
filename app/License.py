@@ -41,7 +41,7 @@ def getRevoked():
 
 def updateValidated(userId):
     cursor = conn.cursor()
-    data = f"""UPDATE USERS SET is_validated = 1 WHERE user_id = '{userId}'"""
+    data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0 WHERE user_id = '{userId}'"""
     try:
         cursor.execute(data)
     except Exception as e:
@@ -49,15 +49,15 @@ def updateValidated(userId):
     conn.commit()
     return
 
-def updateRevoked(userId):
-    cursor = conn.cursor()
-    data = f"""UPDATE USERS SET is_revoked = 0 WHERE user_id = '{userId}'"""
-    try:
-        cursor.execute(data)
-    except Exception as e:
-        logging.exception (f"Could not update is_revoked for {userId}: {e}")    
-    conn.commit()
-    return
+# def updateRevoked(userId):
+#     cursor = conn.cursor()
+#     data = f"""UPDATE USERS SET is_revoked = 0 WHERE user_id = '{userId}'"""
+#     try:
+#         cursor.execute(data)
+#     except Exception as e:
+#         logging.exception (f"Could not update is_revoked for {userId}: {e}")    
+#     conn.commit()
+#     return
 
 def addLicenseKey(userId, licenseKey):
     cursor = conn.cursor()
@@ -148,7 +148,6 @@ def verifiedResponse(response, userId, licenseKey):
         elif numUses > 1:
             if userId in listRevoked:
                 updateValidated(userId)
-                updateRevoked(userId)
                 addLicenseKey(userId, licenseKey)
                 return 103
             else:
