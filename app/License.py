@@ -112,9 +112,9 @@ def fetchLicenseKey(databaseID, token):
 
 def verifyLicenseKey(licenseKey):
     url = "https://api.gumroad.com/v2/licenses/verify"
-    params = {"product_permalink": gumroadProductId, "license_key" : licenseKey}
+    params = {"product_permalink": gumroadProductId, "license_key": licenseKey.strip()}
     try:
-        verify = requests.post(url, data=params)
+        verify = requests.post(url, headers={}, data=params)
         statusCode = verify.status_code
         if statusCode == 200:
             parsed = verify.json()
