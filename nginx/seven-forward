@@ -1,6 +1,18 @@
+# https://www.digitalocean.com/community/tutorials/how-to-implement-browser-caching-with-nginx-s-header-module-on-ubuntu-16-04
+# Expires map
+map $sent_http_content_type $expires {
+    default                    off;
+    text/html                  epoch;
+    text/css                   max;
+    application/javascript     max;
+    ~image/                    max;
+}
+
 server {
     server_name seven-forward.com www.seven-forward.com;
 #    server_name notion-reading-list.eastus2.cloudapp.azure.com;
+
+    expires $expires;
 
     location / {
         include uwsgi_params;
@@ -9,7 +21,7 @@ server {
 
     location ^~ /static/  {
         include /etc/nginx/mime.types;
-	root /home/se7enforward/reading_list/server/;
+	    root /home/se7enforward/reading_list/server/;
     }
 
     location ^~ /images/ {
