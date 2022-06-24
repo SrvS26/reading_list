@@ -58,7 +58,7 @@ def addToDatabase(dictionary, databaseID):
         logging.exception(f"Exception occurred: {e}")
     data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, user_email, time_added) VALUES (
         '{access_token}', '{databaseID}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', '{user_email}', {time_added}
-    ) ON CONFLICT (user_id) DO UPDATE SET access_token = '{access_token}', database_id = '{databaseID}' WHERE is_revoked = 1;"""  # workspace_name has double quotes as a single quote exists in the string itself
+    ) ON CONFLICT (user_id) DO UPDATE SET access_token = '{access_token}', database_id = '{databaseID}';"""  # workspace_name has double quotes as a single quote exists in the string itself
     try:
         cursor_object.execute(data)
         logging.info(f"Inserted data into table for user {user_id}")
