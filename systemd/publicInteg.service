@@ -3,11 +3,11 @@ Description=uWSGI instance to serve notion reading list server
 After=network.target
 
 [Service]
-User=se7enforward
+User=sevenforward
 Group=www-data
-WorkingDirectory=/home/se7enforward/reading_list/server
-Environment="PATH=/home/se7enforward/reading_list/server/virt/bin"
-ExecStart=/home/se7enforward/reading_list/server/virt/bin/uwsgi --ini publicInteg.ini
+WorkingDirectory=/home/sevenforward/reading_list/server
+Environment="PATH=/home/sevenforward/reading_list/server/virt/bin"
+ExecStart=/home/sevenforward/reading_list/server/virt/bin/uwsgi --ini publicInteg.ini
 
 [Install]
 WantedBy=multi-user.target

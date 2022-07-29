@@ -16,17 +16,17 @@ server {
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/home/se7enforward/reading_list/server/publicInteg.sock;
+        uwsgi_pass unix:/home/sevenforward/reading_list/server/publicInteg.sock;
     }
 
     location ^~ /static/  {
         include /etc/nginx/mime.types;
-	    root /home/se7enforward/reading_list/server/;
+	    root /home/sevenforward/reading_list/server/;
     }
 
     location ^~ /images/ {
         include /etc/nginx/mime.types;
-        root /home/se7enforward/;
+        root /home/sevenforward/;
     }
 
 #    listen 443 ssl; # managed by Certbot
