@@ -1,4 +1,5 @@
 import requests
+import time
 from flask import Flask
 from flask import request
 from flask import render_template
@@ -124,6 +125,7 @@ def getCode():
             "query": "Bookshelf",
         }
         logging.info("Querying for database ID")
+        time.sleep(2)
         try:
             response = requests.post(
                 databaseIDurl,
