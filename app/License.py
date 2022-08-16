@@ -108,7 +108,7 @@ def fetchID(userDetails):
                 databaseID = databaseResults.get("id", None)
                 return (databaseID, userID)
             else:
-                logging.error(f"License Key database not found for user: ", userID)
+                logging.error(f"License Key database not found for user: ", {userID})
                 return (None, None)
         else:
             logging.error(
