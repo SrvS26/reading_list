@@ -252,7 +252,7 @@ def insertImage(ourDic, title):
     cursor = conn.cursor()         
     imageName = url + "/" + title + ".jpg"
     # print (imageName)
-    if (ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None) or (ourDic.get("ISBN_10") is "" and ourDic.get("ISBN_13") is ""): 
+    if (ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None) or (ourDic.get("ISBN_10") == "" and ourDic.get("ISBN_13") == ""):
         return imageName        
     else:    
         rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{ourDic.get("ISBN_10")}', '{ourDic.get("ISBN_13")}', "{imageName}");""" 
