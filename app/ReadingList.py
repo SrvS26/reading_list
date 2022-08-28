@@ -223,8 +223,6 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
                 if element["type"] == "ISBN_10":
                     ourDic["ISBN_10"] = element["identifier"]
                 if element["type"] == "ISBN_13":       
-            if element["type"] == "ISBN_13":
-                if element["type"] == "ISBN_13":       
                     ourDic["ISBN_13"] = element["identifier"]
             else:
                 ourDic["ISBN_10"] = ""      
