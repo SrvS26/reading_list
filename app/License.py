@@ -209,6 +209,8 @@ def error(pageID, value, userDetails, licenseKey):
     userID = userDetails["user_id"]
     url = f"https://api.notion.com/v1/pages/{pageID}"
     message = errors[value]
+    if value == 102:
+        message = message + ": " + licenseKey
     payload = {
         "properties": {
             "Status": {"rich_text": [{"text": {"content": message}}]},
