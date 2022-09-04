@@ -145,7 +145,7 @@ def fetchLicenseKey(databaseID, userDetails):
                     )
                 if len(licenseList) != 0:
                     recLicenseKey = licenseList[0].get("plain_text", None)
-                    logging.info(f"Received license key: {recLicenseKey} for user: {userID}")
+                    logging.warning(f"Received license key: {recLicenseKey} for user: {userID}")
                         # if licenseKey[-1] == ";":
                     altLicenseKey = recLicenseKey[:-1]
                     licenseKey = ''.join(altLicenseKey.splitlines())
