@@ -104,10 +104,10 @@ def requiredPageDetails(databaseID, token): #Filter can be modified to remove la
             return results, user_id
         else:
             logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
-            return None
+            return None, user_id
     except Exception as e:
         logging.error(f"Failed to fetch new details from Bookshelf for user: {user_id}") 
-        return None   
+        return None, user_id   
 
 def getNewTitlesOrISBN(results):   
     listOfAllTitlesOrISBN = []
