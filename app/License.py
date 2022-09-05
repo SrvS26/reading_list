@@ -26,7 +26,7 @@ conn = sqlite3.connect(databaseFile)
 # fetchToken :: () -> [{"user_id"::str, "access_token"::str}]
 def fetchToken():
     cursor = conn.cursor()
-    data = """SELECT access_token, user_id FROM USERS WHERE is_validated = 0"""
+    data = """SELECT access_token, user_id FROM USERS WHERE is_validated = 0 and database_id != '-1'"""
     try:
         cursor.execute(data)
         records = cursor.fetchall()
