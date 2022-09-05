@@ -101,7 +101,7 @@ def requiredPageDetails(databaseID, token): #Filter can be modified to remove la
             # print(parsed_response)
             results = parsed_response["results"]  
             # print (results)
-            return results
+            return results, user_id
         else:
             logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
             return None
@@ -207,7 +207,7 @@ def mapOneDicToAnother(ourDic, GoogleBookInfo):
     if GoogleBookInfo.get("authors") != None and len(GoogleBookInfo["authors"]) > 0:
         for item in GoogleBookInfo["authors"]:
             authors = {}
-            authors["name"] = string.capwords(item)
+            authors["name"] = string.capwords(item).replace(",", "")
             listauthors.append(authors)           
     ourDic["Authors"] = listauthors  
     summary = GoogleBookInfo.get("description", "")
@@ -440,7 +440,7 @@ def cannotRetrieve(dicOfTitlesOrISBN):
         logging.info("Succesfully removed ';'")
 
    
-def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty):
+def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProperty, userID):
     pageID = dicOfTitlesOrISBN["pageID"]
     url = f'https://api.notion.com/v1/pages/{pageID}'
     payload = {
@@ -522,17 +522,17 @@ def updateDatabase(availableFields, dicOfTitlesOrISBN, pageCoverURL, deletedProp
     for item in deletedProperty:
         del payload["properties"][item]     
         # print (payload)     
-    logging.info("Adding New book details to Bookshelf")         
+    logging.info(f"Adding New book details to Bookshelf for user: {userID}")         
     r = requests.patch(url, json=payload, headers={
     "Authorization": f"Bearer {token}",
     "Notion-Version": "2022-02-22",
     "Content-Type": "application/json"
     })
     if r.status_code == 401:
-        logging.warning("Access has been revoked")
+        logging.warning(f"Access has been revoked for {userID}")
     elif r.status_code != 200:
         # print (r.json())
-        logging.error("Could not update database with new book details, only updating title/ISBN", r.json())
+        logging.error(f"Could not update database with new book details for {userID}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}, only updating title/ISBN: {r.json()}")
         cannotRetrieve(dicOfTitlesOrISBN)
         # print (r.json())
     else:        
@@ -547,7 +547,7 @@ while True:
             databaseID = listAccessTokens[index]["database_id"]
             token = listAccessTokens[index]["access_token"]
             try:
-                results = requiredPageDetails(databaseID, token)  
+                results, userID = requiredPageDetails(databaseID, token)  
                 if results == 401 or results == 404:
                     listAccessTokens[index]["is_revoked"] = True
                 elif results is not None: 
@@ -559,7 +559,7 @@ while True:
                         if newGoogleBookDetails is not None:
                             mappedDic = mapOneDicToAnother(ourDic, newGoogleBookDetails)
                             filePath = uploadImage(mappedDic, newGoogleBookDetails)
-                            updateDatabase(mappedDic, item, filePath, missingProperties)               
+                            updateDatabase(mappedDic, item, filePath, missingProperties, userID)               
             except Exception as e:
                 logging.error(e) 
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
