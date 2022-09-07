@@ -19,6 +19,8 @@ databaseFile = config("DATABASE_FILE_PATH")
 
 imageFolder = config("IMAGE_PATH")
 
+google_api_key = config("GOOGLE_API_KEY")
+
 url = config("BASE_URL")
 
 # logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -165,9 +167,9 @@ def getAllFields(results):
 
 def getBookDetails(dicOfTitlesOrISBN):
     if dicOfTitlesOrISBN.get("Type") == "Title":
-        url = "https://www.googleapis.com/books/v1/volumes?q=" + dicOfTitlesOrISBN["Value"]
+        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q={dicOfTitlesOrISBN['Value']}"
     elif dicOfTitlesOrISBN.get("Type") == "ISBN_10" or dicOfTitlesOrISBN.get("Type") == "ISBN_13":
-        url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + dicOfTitlesOrISBN["Value"] 
+        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicOfTitlesOrISBN['Value']}"
     webPageDetails = requests.get(url)     
     logging.info(f"Book details fetched from google books {url}")                                 
     webPageContent = (webPageDetails.content)
