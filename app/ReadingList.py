@@ -46,7 +46,7 @@ def removeFromUsers(revokedUsers):
     if len(revokedUsers)>0:
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
-        cursor.executemany("UPDATE USERS SET is_revoked = 1, is_validated = 0 WHERE database_id = ?", listDatabaseIDs)
+        cursor.executemany("UPDATE USERS SET is_revoked = 1, is_validated = 0, database_id = '-1' WHERE database_id = ?", listDatabaseIDs)
         logging.info(f"Updated {len(revokedUsers)} number of is_revoked to 1 in USERS")
         conn.commit()
         cursor.close()
@@ -93,10 +93,10 @@ def requiredPageDetails(databaseID, token): #Filter can be modified to remove la
         # print (response)
         if response.status_code == 401:
             logging.warning(f"User {user_id} has revoked access")
-            return 401
+            return 401, user_id
         elif response.status_code == 404:
             logging.warning(f"User {user_id} has deleted Bookshelf")
-            return 404  
+            return 404, user_id
         elif response.status_code == 200:
             logging.info(f"Fetched new additions to BookShelf for user: {user_id}")
             parsed_response = response.json()
@@ -108,7 +108,7 @@ def requiredPageDetails(databaseID, token): #Filter can be modified to remove la
             logging.error(f"Failed due to status code: {response.status_code}, response: {response.json()} for user: {user_id}")     
             return None, user_id
     except Exception as e:
-        logging.error(f"Failed to fetch new details from Bookshelf for user: {user_id}") 
+        logging.error(f"Failed to fetch new details from Bookshelf for user: {user_id}, Error: {e}") 
         return None, user_id   
 
 def getNewTitlesOrISBN(results):   
