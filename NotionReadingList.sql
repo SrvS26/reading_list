@@ -23,3 +23,15 @@ CREATE TABLE IF NOT EXISTS IMAGES (
 );
 
 
+ALTER TABLE USERS ADD COLUMN status VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS Goodreads (
+            database_id VARCHAR(255),
+            user_id VARCHAR(255),
+            num_books INT,
+            num_books_failed INT,
+            status VARCHAR (255),
+            FOREIGN KEY(user_id) REFERENCES USERS(user_id)
+);  
+
+PRAGMA foreign_keys = ON;

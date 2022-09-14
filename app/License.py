@@ -204,6 +204,24 @@ def verifiedResponse(response, userId, licenseKey, listRevoked):
         return 104
 
 
+def checkGoodreads(response, userID):
+    purchasedTier = response.get("variants")
+    tier = {}
+    tier["variant"] = purchasedTier
+    tier["user_id"] = userID
+    return tier
+
+def goodreadsEntry(tier):
+    conn = sqlite3.connect(databaseFile)
+    cursor_object = conn.cursor()
+    if tier["variant"] == "(Autofill with Goodreads Import)":
+        data = f"""INSERT INTO GOODREADS ('user_id') VALUES ('{tier['user_id']}')"""
+        cursor_object.execute(data)
+        conn.commit()
+    cursor_object.close()
+    return
+
+
 def error(pageID, value, userDetails, licenseKey):
     token = userDetails["access_token"]
     userID = userDetails["user_id"]
