@@ -1,0 +1,100 @@
+from turtle import title
+import requests
+import logging
+import json
+from decouple import config
+import failed
+import string
+
+logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+google_api_key = config("GOOGLE_API_KEY")
+
+def getBookDetails(dicIdentifier, token, userID):
+    if dicIdentifier.get("Type") == "Title":
+        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q={dicIdentifier['Value']}"
+    elif dicIdentifier.get("Type") == "ISBN_10" or dicIdentifier.get("Type") == "ISBN_13":
+        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicIdentifier['Value']}"
+    webPage = requests.get(url)     
+    if webPage.status_code != 200:
+        logging.error(f"Failed request to fetch book details, Book: {dicIdentifier['Value']} for user: {userID} with {webPage.status_code}")
+        failed.cannotRetrieve(dicIdentifier, token)
+    else:    
+        logging.info(f"Book details fetched for book: {dicIdentifier['Value']} for user: {userID}")                                 
+    webPageContent = (webPage.content)
+    parsedContent = json.loads(webPageContent)                              
+    if parsedContent.get("totalItems", 0) > 0:
+        listOfBookResults = parsedContent["items"]
+        categories = getAllCategories(listOfBookResults)
+        firstBookResult = listOfBookResults[0]                              
+        bookDetails = firstBookResult.get("volumeInfo")
+        requiredBookDetails = ["title", "subtitle", "authors", "publisher", "publishedDate", "description", "industryIdentifiers", "pageCount", "categories", "imageLinks"]
+        dicOfRequiredBookDetails = {}
+        for item in requiredBookDetails:  
+            if item == "categories":
+                dicOfRequiredBookDetails[item] = categories                                      
+            elif item in bookDetails.keys():                                   
+                dicOfRequiredBookDetails[item] = bookDetails[item]
+            else:
+                continue  
+        return (dicOfRequiredBookDetails)                                      
+    else:
+        logging.info(f"No google book results were found for {dicIdentifier.get('Type')}: {dicIdentifier.get('Value')} only updating title/ISBN")
+        failed.cannotRetrieve(dicIdentifier, token)    
+        return None
+
+
+def mapOneDicToAnother(ourDic, GoogleBookInfo):
+    ourDic["Publisher"] = GoogleBookInfo.get("publisher", "")
+    listauthors = []
+    if GoogleBookInfo.get("authors") != None and len(GoogleBookInfo["authors"]) > 0:
+        for item in GoogleBookInfo["authors"]:
+            authors = {}
+            authors["name"] = string.capwords(item).replace(",", "")
+            listauthors.append(authors)           
+    ourDic["Authors"] = listauthors  
+    summary = GoogleBookInfo.get("description", "")
+    if len(summary) > 2000:
+        summary = summary[:1997] + "..."
+        summary_extd = summary[1998:]    
+        ourDic["Summary_extd"] = summary_extd
+    ourDic["Summary"] = summary
+    ourDic["Published"] = GoogleBookInfo.get("publishedDate", "")
+    if GoogleBookInfo.get("industryIdentifiers") != None:
+        for element in GoogleBookInfo["industryIdentifiers"]:
+            if element["type"] in ["ISBN_10", "ISBN_13"]:
+                if element["type"] == "ISBN_10":
+                    ourDic["ISBN_10"] = element["identifier"]
+                if element["type"] == "ISBN_13":       
+                    ourDic["ISBN_13"] = element["identifier"]
+            else:
+                ourDic["ISBN_10"] = ""      
+                ourDic["ISBN_13"] = ""
+    else:
+        ourDic["ISBN_10"] = ""      
+        ourDic["ISBN_13"] = ""
+    ourDic["Pages"] = GoogleBookInfo.get("pageCount", 0)
+    ourDic["Title"] = GoogleBookInfo.get("title", "")
+    subTitle = GoogleBookInfo.get("subtitle", "")
+    if subTitle != "":
+        ourDic["Subtitle"] = f": {subTitle}"
+    listcategory = []
+    if GoogleBookInfo.get("categories") != None and len(GoogleBookInfo["categories"]) > 0:   
+        for item in GoogleBookInfo["categories"]: 
+            category = {}
+            category["name"] = string.capwords(item.replace(","," "))
+            listcategory.append(category)
+    ourDic["Category"] = listcategory
+    if GoogleBookInfo.get("imageLinks") != None:
+        imageLink = GoogleBookInfo["imageLinks"]["thumbnail"]
+        ourDic["Image_url"] = imageLink
+    logging.info("Google book details matched to appropriate fields in BookShelf")
+    return ourDic 
+
+
+def getAllCategories (allResults):
+    allCategories = []
+    for i in allResults:
+        categories = i.get("volumeInfo", {}).get("categories", [])
+        allCategories = allCategories + categories
+    finalCategories = set(allCategories)    
+    return finalCategories   
