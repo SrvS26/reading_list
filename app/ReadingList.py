@@ -1,5 +1,4 @@
-import time
-import sqlite3
+import datetime, time
 from decouple import config
 import logging
 import googlebooks
@@ -22,12 +21,11 @@ url = config("BASE_URL")
 # logging.basicConfig(filename='app.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 logging.basicConfig(filename='app.log', format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
-conn = sqlite3.connect(databaseFile)
-logging.debug(f"Connected to database '{databaseFile}'")
-
+conn = usersDatabase.connectDatabase(databaseFile)
 
 while True:
-    newRecords = usersDatabase.getRecords()
+    print (datetime.datetime.now())
+    newRecords = usersDatabase.getRecords(conn)
     listAccessTokens = usersDatabase.getValidatedTokens(newRecords)
     for i in range (5):  #loop through Notion 5 times before looking for new access tokens
         for index in range(len(listAccessTokens)):
@@ -52,7 +50,8 @@ while True:
             except Exception as e:
                 logging.error(e) 
         listRevoked = list(filter(lambda x: x["is_revoked"], listAccessTokens))
-        usersDatabase.removeFromUsers(listRevoked)
+        usersDatabase.removeFromUsers(listRevoked, conn)
         time.sleep(5)
+    print (datetime.datetime.now())    
 
 conn.close()

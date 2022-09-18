@@ -1,13 +1,17 @@
 import sqlite3
 from decouple import config
 import logging
+import asyncio
 
 databaseFile = config("DATABASE_FILE_PATH")
 
-conn = sqlite3.connect(databaseFile)
-logging.debug(f"Connected to database '{databaseFile}'")
 
-def getRecords():
+def connectDatabase(db_file):
+    conn = sqlite3.connect(db_file)
+    logging.debug(f"Connected to database '{db_file}'")
+    return conn
+
+def getRecords(conn):
     cursor = conn.cursor()
     fetchSpecificDeets = f"""SELECT access_token, database_id, user_id from USERS WHERE is_validated = 1"""
     logging.info(f"Attempting to fetch data from validated users from USERS")
@@ -35,15 +39,15 @@ def getValidatedTokens(records):
     return listofTokens    
 
 
-def retrieveUserID (condition):
-    cursor = conn.cursor()
-    fetchUserID = f"""SELECT user_id from users where database_id = '{condition}'"""
-    cursor.execute(fetchUserID)
-    user_id = cursor.fetchall()
-    conn.commit()
-    return user_id       
+# def retrieveUserID (condition, conn):
+#     cursor = conn.cursor()
+#     fetchUserID = f"""SELECT user_id from users where database_id = '{condition}'"""
+#     cursor.execute(fetchUserID)
+#     user_id = cursor.fetchall()
+#     conn.commit()
+#     return user_id       
 
-def removeFromUsers(revokedUsers):
+def removeFromUsers(revokedUsers, conn):
     if len(revokedUsers)>0:
         cursor = conn.cursor()
         listDatabaseIDs = list(map(lambda x:(x["database_id"],), revokedUsers))
