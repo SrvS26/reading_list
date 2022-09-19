@@ -34,6 +34,9 @@ async def getBookDetails(
     if with_key:
         qp = f"&key={google_api_key}"
     else:
+        logging.warning(
+            f"Retrying fetching Google details without API key for user: {user_id} for book: {dicIdentifier['Value']}"
+        )
         qp = ""
     if retries > 0:
         user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
@@ -69,6 +72,9 @@ async def getBookDetails(
             )
         parsedContent = await webPage.json()
     else:
+        logging.error(
+            f"Exhausted retries for book: {dicIdentifier['Value']} for user: {user_id}"
+        )
         parsedContent = {}
     if parsedContent.get("totalItems", 0) > 0:
         listOfBookResults = parsedContent["items"]
