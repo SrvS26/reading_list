@@ -31,6 +31,10 @@ def get_query_params(dicIdentifier):
 async def getBookDetails(
     session, user_info_with_identifiers_, with_key=True, retries=5
 ):
+    user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
+    user_id = user_info_with_identifiers["user_id"]
+    dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
+
     if with_key:
         qp = f"&key={google_api_key}"
     else:
@@ -39,9 +43,6 @@ async def getBookDetails(
         )
         qp = ""
     if retries > 0:
-        user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
-        dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
-        user_id = user_info_with_identifiers["user_id"]
         if dicIdentifier.get("Type") == "Title":
             url = f"https://www.googleapis.com/books/v1/volumes?q={dicIdentifier['Value']}{qp}"
         elif (
