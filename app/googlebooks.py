@@ -5,6 +5,7 @@ import custom_logger
 import json
 from decouple import config
 import string
+import asyncio
 
 
 logging = custom_logger.get_logger("googlebooks")
@@ -17,19 +18,24 @@ async def getBookDetails(session, user_info_with_identifiers_):
     dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
     user_id = user_info_with_identifiers["user_id"]
     if dicIdentifier.get("Type") == "Title":
-        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q={dicIdentifier['Value']}"
+        # url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q={dicIdentifier['Value']}"
+        url = f"https://www.googleapis.com/books/v1/volumes?&q={dicIdentifier['Value']}"
     elif (
         dicIdentifier.get("Type") == "ISBN_10" or dicIdentifier.get("Type") == "ISBN_13"
     ):
-        url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicIdentifier['Value']}"
+        # url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicIdentifier['Value']}"
+        url = f"https://www.googleapis.com/books/v1/volumes?&q=isbn:{dicIdentifier['Value']}"
     webPage = await session.request(method="GET", url=url, ssl=False)
-    if webPage.status != 200:
+    if webPage.status == 429:
+        logging.error(f"Rate limited, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}, {webPage.headers}")
+        user_info_with_identifiers["google_book_details"] = 429
+        return user_info_with_identifiers
+    elif webPage.status != 200:
         logging.error(
             f"Failed request to fetch book details, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}"
         )
         user_info_with_identifiers["google_book_details"] = None
         return user_info_with_identifiers
-        # failed.cannotRetrieve(dicIdentifier, token) TODO: call this in notion update in the end
     else:
         logging.info(
             f"Book details fetched for book: {dicIdentifier['Value']} for user: {user_id}"
@@ -67,7 +73,6 @@ async def getBookDetails(session, user_info_with_identifiers_):
             f"No google book results were found for {dicIdentifier.get('Type')}: {dicIdentifier.get('Value')} only updating title/ISBN"
         )
         user_info_with_identifiers["google_book_details"] = None
-        # failed.cannotRetrieve(dicIdentifier, token) TODO: call this in the end notion update
         return user_info_with_identifiers
 
 

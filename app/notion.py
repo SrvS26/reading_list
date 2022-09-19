@@ -35,7 +35,7 @@ async def requiredPageDetails(session, user_info_):
     url = f"https://api.notion.com/v1/databases/{user_info['database_id']}/query"
     payload = '{"filter": {"or": [{"property": "Title","rich_text": {"ends_with": ";"}},{"property": "ISBN_10","rich_text": {"ends_with": ";"}},{"property": "ISBN_13","rich_text": {"ends_with": ";"}}]}}'
     headers = default_headers(user_info["access_token"])
-    logging.info("Applying filters and fetching new additions to BookShelf")
+    logging.info(f"Applying filters and fetching new additions to BookShelf: {user_id}")
     try:
         response = await session.request(
             method="POST", url=url, data=payload, headers=headers, ssl=False
@@ -144,7 +144,6 @@ async def updateDatabase(session, user_info_):
     user_id = user_info["user_id"]
     pageID = user_info["new_book_identifiers"]["pageID"]
     availableFields = user_info["google_book_details"]
-    print (availableFields["Title"])
     url = f"https://api.notion.com/v1/pages/{pageID}"
     title = string.capwords(availableFields["Title"]) + availableFields["Subtitle"]
     payload = {
@@ -189,6 +188,7 @@ async def updateDatabase(session, user_info_):
         headers=default_headers(user_info["access_token"]),
         ssl=False,
     )
+    parsed_response = await r.json()
     if r.status == 401 or r.status == 404:
         logging.warning(
             f"Access revoked/Database missing for {user_id}, status: {r.status}"
@@ -197,7 +197,7 @@ async def updateDatabase(session, user_info_):
         return user_info
     elif r.status != 200:
         logging.error(
-            f"Could not update database with new book details for {user_id}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}, only updating title/ISBN: {r.json()}"
+            f"Could not update database with new book details for {user_id}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}, only updating title/ISBN: {parsed_response}"
         )
         return user_info
     else:

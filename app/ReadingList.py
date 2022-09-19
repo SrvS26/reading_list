@@ -91,7 +91,7 @@ async def get_google_book_details(session, conn, user_info_with_identifiers):
     user_info_with_googlebooks = await googlebooks.getBookDetails(
         session, user_info_with_identifiers
     )
-    if user_info_with_googlebooks["google_book_details"] is not None:
+    if user_info_with_googlebooks["google_book_details"] is not None and user_info_with_googlebooks["google_book_details"] != 429:
         mapped_google_to_notion = googlebooks.mapOneDicToAnother(
             copy.deepcopy(ourDic), user_info_with_googlebooks["google_book_details"]
         )
@@ -104,7 +104,7 @@ async def get_google_book_details(session, conn, user_info_with_identifiers):
 
 async def update_notion_with_bookdetails(session, user_info_with_googlebooks):
     if (
-        user_info_with_googlebooks["google_book_details"] is not None
+        user_info_with_googlebooks["google_book_details"] is not None and user_info_with_googlebooks["google_book_details"] != 429
     ):
         user_info_end = await notion.updateDatabase(session, user_info_with_googlebooks)
 
@@ -116,10 +116,6 @@ async def update_notion_with_bookdetails(session, user_info_with_googlebooks):
         listRevoked = list(filter(lambda x: x["is_revoked"], user_info_end))
         usersDatabase.removeFromUsers(listRevoked, conn)
     return None
-
-
-all_users = usersDatabase.getRecords(conn)
-validated_users_info = usersDatabase.getValidatedTokens(all_users)
 
 
 async def run_main():
@@ -152,5 +148,8 @@ async def run_main():
         )
 
 
-
-asyncio.run(run_main())
+while True:
+    all_users = usersDatabase.getRecords(conn)
+    validated_users_info = usersDatabase.getValidatedTokens(all_users)
+    asyncio.run(run_main()) 
+    time.sleep(5)
