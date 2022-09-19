@@ -1,20 +1,19 @@
+import copy
 from turtle import title
 import requests
-import logging
+import custom_logger
 import json
 from decouple import config
-import failed
 import string
 
-logging.basicConfig(
-    filename="app.log",
-    format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-)
+
+logging = custom_logger.get_logger("googlebooks")
+
 google_api_key = config("GOOGLE_API_KEY")
 
 
-async def getBookDetails(session, user_info_with_identifiers):
+async def getBookDetails(session, user_info_with_identifiers_):
+    user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
     dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
     user_id = user_info_with_identifiers["user_id"]
     if dicIdentifier.get("Type") == "Title":
@@ -23,7 +22,7 @@ async def getBookDetails(session, user_info_with_identifiers):
         dicIdentifier.get("Type") == "ISBN_10" or dicIdentifier.get("Type") == "ISBN_13"
     ):
         url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicIdentifier['Value']}"
-    webPage = await session.requests(method="GET", url=url, ssl=False)
+    webPage = await session.request(method="GET", url=url, ssl=False)
     if webPage.status != 200:
         logging.error(
             f"Failed request to fetch book details, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}"

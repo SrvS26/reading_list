@@ -1,10 +1,11 @@
 import sqlite3
 from decouple import config
-import logging
 import asyncio
+import custom_logger
 
 databaseFile = config("DATABASE_FILE_PATH")
 
+logging = custom_logger.get_logger("usersDatabase")
 
 def connectDatabase(db_file):
     conn = sqlite3.connect(db_file)
@@ -37,15 +38,6 @@ def getValidatedTokens(records):
         listofTokens.append(dicTokens)
     logging.info(f"Processed {len(records)} number of rows of data fetched from USERS")            
     return listofTokens    
-
-
-# def retrieveUserID (condition, conn):
-#     cursor = conn.cursor()
-#     fetchUserID = f"""SELECT user_id from users where database_id = '{condition}'"""
-#     cursor.execute(fetchUserID)
-#     user_id = cursor.fetchall()
-#     conn.commit()
-#     return user_id       
 
 def removeFromUsers(revokedUsers, conn):
     if len(revokedUsers)>0:

@@ -1,16 +1,17 @@
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
-import logging
 import sqlite3
 from decouple import config
 import requests
 import os
 from uuid import UUID, uuid4
+import custom_logger
 
 databaseFile = config("DATABASE_FILE_PATH")
 url = config("BASE_URL")
 imageFolder = config("IMAGE_PATH")
 
+logging = custom_logger.get_logger("image")
 
 def getImageDatabase(conn, ourDic):
     cursor = conn.cursor()
@@ -38,11 +39,12 @@ def insertImage(conn, ourDic, finaltitle):
 async def getImage(session, ourDic, finalTitle):
     title = ourDic["Title"]
     imageLink = ourDic["Image_url"]
-    if imageLink is not "":
+    if imageLink != "":
         r = await session.get(imageLink)
+        x = await r.read()
         logging.info(f"Querying for book {finalTitle} cover")
         with open(finalTitle, "wb") as f:
-            f.write(r.content)
+            f.write(x)
         return finalTitle
     else:
         logging.info(f"Book {title} has no image")
@@ -127,14 +129,6 @@ def finalImage(file, finaltitle):
     if file != "NI.jpg":
         os.remove(file)
     return finaltitle
-
-
-# def getImageCover(ourDic):
-#     if ourDic.get("ISBN_13") != None:
-#         ISBN = ourDic["ISBN_13"]
-#     elif ourDic.get("ISBN_10") != None:
-#         ISBN = ourDic["ISBN_10"]
-#     return f"https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg"       #Returns a blank image if the book cover is not available
 
 
 async def uploadImage(session, conn, ourDic):

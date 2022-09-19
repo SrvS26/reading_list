@@ -1,7 +1,7 @@
-import logging
+import copy
+import custom_logger
 import requests
 import string
-import failed
 from aiohttp import ClientSession
 
 ourList = [
@@ -17,6 +17,7 @@ ourList = [
     "Summary_extd",
 ]
 
+logging = custom_logger.get_logger("notion")
 
 def default_headers(token):
     return {
@@ -28,11 +29,12 @@ def default_headers(token):
 
 # TODO: Fix the type of `user_info`
 # [{user_id: String, database_id: String, access_token: String, is_revoked: Bool, results: {}|None}]
-async def requiredPageDetails(session, user_info={}):
+async def requiredPageDetails(session, user_info_):    
+    user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
     url = f"https://api.notion.com/v1/databases/{user_info['database_id']}/query"
     payload = '{"filter": {"or": [{"property": "Title","rich_text": {"ends_with": ";"}},{"property": "ISBN_10","rich_text": {"ends_with": ";"}},{"property": "ISBN_13","rich_text": {"ends_with": ";"}}]}}'
-    headers = default_headers({user_info["access_token"]})
+    headers = default_headers(user_info["access_token"])
     logging.info("Applying filters and fetching new additions to BookShelf")
     try:
         response = await session.request(
@@ -41,7 +43,7 @@ async def requiredPageDetails(session, user_info={}):
         if response.status == 401:
             logging.warning(f"User {user_id} has revoked access")
             user_info["is_revoked"] = True
-            user_info["new_books_adeed"] = None
+            user_info["new_books_added"] = None
             return user_info
         elif response.status == 404:
             logging.warning(f"User {user_id} has deleted Bookshelf")
@@ -68,7 +70,10 @@ async def requiredPageDetails(session, user_info={}):
         return user_info
 
 
-def getAllFields(results):
+def getAllFields(user_info_):
+    user_info = copy.deepcopy(user_info_)
+    results = user_info["new_books_added"]
+    user_id = user_info["user_id"]
     allAvailableList = []
     if len(results) > 0:
         onePagePropertyDetails = results[0]
@@ -76,15 +81,18 @@ def getAllFields(results):
         for item in requiredPropertiesGeneral.keys():
             if item in ourList:
                 allAvailableList.append(item)
-        logging.info("All available fields to fill in BookShelf fetched")
+        logging.info(f"All available fields to fill in BookShelf fetched for user: {user_id}")
     else:
         logging.info(
-            "There are no new additions or the notion database 'Bookshelf' is empty"
+            f"There are no new additions or the notion database 'Bookshelf' is empty for user: {user_id}"
         )
     return allAvailableList
 
 
-def getNewTitlesOrISBN(results):
+def getNewTitlesOrISBN(user_info_):
+    user_info = copy.deepcopy(user_info_)
+    results = user_info["new_books_added"]
+    user_id = user_info["user_id"]
     listOfAllTitlesOrISBN = []
     if len(results) > 0:
         for item in results:
@@ -120,9 +128,9 @@ def getNewTitlesOrISBN(results):
                 pageID = item["id"]
                 dicOfTitlesOrISBN["pageID"] = pageID
                 listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)
-        logging.info("New titles/ISBN extracted from new additions to BookShelf")
+        logging.info(f"New titles/ISBN extracted from new additions to BookShelf for user: {user_id}")
     else:
-        logging.info("No changes in BookShelf/No new titles/ISBN found")
+        logging.info(f"No changes in BookShelf/No new titles/ISBN found for user: {user_id}")
     return listOfAllTitlesOrISBN
 
 
@@ -131,10 +139,12 @@ def compareLists(theirs):
     return list(finalSet)
 
 
-async def updateDatabase(session, user_info):
+async def updateDatabase(session, user_info_):
+    user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
     pageID = user_info["new_book_identifiers"]["pageID"]
     availableFields = user_info["google_book_details"]
+    print (availableFields["Title"])
     url = f"https://api.notion.com/v1/pages/{pageID}"
     title = string.capwords(availableFields["Title"]) + availableFields["Subtitle"]
     payload = {
@@ -171,12 +181,12 @@ async def updateDatabase(session, user_info):
     }
     for item in user_info["missing_properties"]:
         del payload["properties"][item]
-    logging.info(f"Adding New book details to Bookshelf for user: {user_id}")
+    logging.info(f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info['new_book_identifiers']['Value']}")
     r = await session.request(
         method="PATCH",
         url=url,
         json=payload,
-        headers=default_headers({user_info["access_token"]}),
+        headers=default_headers(user_info["access_token"]),
         ssl=False,
     )
     if r.status == 401 or r.status == 404:
@@ -190,7 +200,55 @@ async def updateDatabase(session, user_info):
             f"Could not update database with new book details for {user_id}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}, only updating title/ISBN: {r.json()}"
         )
         return user_info
-        # failed.cannotRetrieve(dicOfTitlesOrISBN, user_info) TODO: call cannot retrieve in the end for all failure cases
     else:
-        logging.info("Successfully updated")
+        logging.info(f"Successfully updated book for user: {user_id}")
+        return user_info
+
+
+def cannotRetrieve(session, user_info_):
+    user_info = copy.deepcopy(user_info_)
+    user_id = user_info["user_id"]
+    dicOfTitlesOrISBN = user_info["new_book_identifiers"]
+    url = f'https://api.notion.com/v1/pages/{dicOfTitlesOrISBN["pageID"]}'
+    if dicOfTitlesOrISBN["Type"] == "Title":
+        payload = {
+            "properties": {
+                "Title": {"title": [{"text": {"content": dicOfTitlesOrISBN["Value"]}}]}
+            }
+        }
+    elif dicOfTitlesOrISBN["Type"] == "ISBN_10":
+        payload = {
+            "properties": {
+                "ISBN_10": {
+                    "rich_text": [{"text": {"content": dicOfTitlesOrISBN["Value"]}}]
+                }
+            }
+        }
+    elif dicOfTitlesOrISBN["Type"] == "ISBN_13":
+        payload = {
+            "properties": {
+                "ISBN_13": {
+                    "rich_text": [{"text": {"content": dicOfTitlesOrISBN["Value"]}}]
+                }
+            }
+        }
+    r = session.request(
+        method="PATCH",
+        url=url,
+        json=payload,
+        headers=default_headers(user_info["access_token"]),
+    )
+    if r.status == 401 or r.status == 404:
+        logging.warning(f"Access revoked/Database missing for user: {user_id}")
+        user_info["is_revoked"] = True
+        return user_info
+    elif r.status == 200:
+        logging.info(
+            f"Succesfully removed ';' for user: {user_id} with value: {user_info['new_book_identifiers']['Value']}"
+        )
+        return user_info
+    else:
+        logging.error(
+            f"Failed to update database for user: {user_id} with value: {user_info['new_book_identifiers']['Value']} in cannot retrieve, status: {r.status}"
+        )
         return user_info
