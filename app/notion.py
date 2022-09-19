@@ -1,8 +1,6 @@
 import copy
 import custom_logger
-import requests
 import string
-from aiohttp import ClientSession
 
 ourList = [
     "Title",
@@ -19,6 +17,7 @@ ourList = [
 
 logging = custom_logger.get_logger("notion")
 
+
 def default_headers(token):
     return {
         "Content-Type": "application/json",
@@ -29,7 +28,7 @@ def default_headers(token):
 
 # TODO: Fix the type of `user_info`
 # [{user_id: String, database_id: String, access_token: String, is_revoked: Bool, results: {}|None}]
-async def requiredPageDetails(session, user_info_):    
+async def requiredPageDetails(session, user_info_):
     user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
     url = f"https://api.notion.com/v1/databases/{user_info['database_id']}/query"
@@ -81,7 +80,9 @@ def getAllFields(user_info_):
         for item in requiredPropertiesGeneral.keys():
             if item in ourList:
                 allAvailableList.append(item)
-        logging.info(f"All available fields to fill in BookShelf fetched for user: {user_id}")
+        logging.info(
+            f"All available fields to fill in BookShelf fetched for user: {user_id}"
+        )
     else:
         logging.info(
             f"There are no new additions or the notion database 'Bookshelf' is empty for user: {user_id}"
@@ -128,9 +129,13 @@ def getNewTitlesOrISBN(user_info_):
                 pageID = item["id"]
                 dicOfTitlesOrISBN["pageID"] = pageID
                 listOfAllTitlesOrISBN.append(dicOfTitlesOrISBN)
-        logging.info(f"New titles/ISBN extracted from new additions to BookShelf for user: {user_id}")
+        logging.info(
+            f"New titles/ISBN extracted from new additions to BookShelf for user: {user_id}"
+        )
     else:
-        logging.info(f"No changes in BookShelf/No new titles/ISBN found for user: {user_id}")
+        logging.info(
+            f"No changes in BookShelf/No new titles/ISBN found for user: {user_id}"
+        )
     return listOfAllTitlesOrISBN
 
 
@@ -180,7 +185,9 @@ async def updateDatabase(session, user_info_):
     }
     for item in user_info["missing_properties"]:
         del payload["properties"][item]
-    logging.info(f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info['new_book_identifiers']['Value']}")
+    logging.info(
+        f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info['new_book_identifiers']['Value']}"
+    )
     r = await session.request(
         method="PATCH",
         url=url,

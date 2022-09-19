@@ -1,7 +1,6 @@
 import asyncio
 import copy
-import datetime, time
-import logging
+import time
 from decouple import config
 import googlebooks
 import usersDatabase
@@ -9,7 +8,6 @@ import image
 import notion
 from aiohttp import ClientSession
 import custom_logger
-import test
 
 ourList = [
     "Title",
@@ -76,14 +74,13 @@ async def get_added_books_from_notion(session, user_info={}):
     return user_info_updated
 
 
-
 def flatten_user_books(user_info_updated):
     user_info_list = []
     for new_book in user_info_updated["new_book_identifiers"]:
         # flat_dict = dict()
         flat_dict = copy.deepcopy(user_info_updated)
         flat_dict["new_book_identifiers"] = new_book
-        user_info_list.append(flat_dict)    
+        user_info_list.append(flat_dict)
     return user_info_list
 
 
@@ -91,7 +88,7 @@ async def get_google_book_details(session, conn, user_info_with_identifiers):
     user_info_with_googlebooks = await googlebooks.getBookDetails(
         session, user_info_with_identifiers
     )
-    if user_info_with_googlebooks["google_book_details"] is not None and user_info_with_googlebooks["google_book_details"] != 429:
+    if user_info_with_googlebooks["google_book_details"] is not None:
         mapped_google_to_notion = googlebooks.mapOneDicToAnother(
             copy.deepcopy(ourDic), user_info_with_googlebooks["google_book_details"]
         )
@@ -103,11 +100,8 @@ async def get_google_book_details(session, conn, user_info_with_identifiers):
 
 
 async def update_notion_with_bookdetails(session, user_info_with_googlebooks):
-    if (
-        user_info_with_googlebooks["google_book_details"] is not None and user_info_with_googlebooks["google_book_details"] != 429
-    ):
+    if user_info_with_googlebooks["google_book_details"] is not None:
         user_info_end = await notion.updateDatabase(session, user_info_with_googlebooks)
-
     elif user_info_with_googlebooks["google_book_details"] is None:
         user_info_end = await notion.cannotRetrieve(session, user_info_with_googlebooks)
     else:
@@ -127,8 +121,8 @@ async def run_main():
             ]
         )
 
-    larger_list = list(map(lambda x: flatten_user_books(x), user_info_updated)) 
- 
+    larger_list = list(map(lambda x: flatten_user_books(x), user_info_updated))
+
     user_info_list = [item for sublist in larger_list for item in sublist]
 
     async with ClientSession(trust_env=True) as session:
@@ -137,7 +131,7 @@ async def run_main():
                 get_google_book_details(session, conn, user_info_with_identifiers)
                 for user_info_with_identifiers in user_info_list
             ]
-        ) 
+        )
 
     async with ClientSession(trust_env=True) as session:
         await asyncio.gather(
@@ -151,5 +145,5 @@ async def run_main():
 while True:
     all_users = usersDatabase.getRecords(conn)
     validated_users_info = usersDatabase.getValidatedTokens(all_users)
-    asyncio.run(run_main()) 
+    asyncio.run(run_main())
     time.sleep(5)

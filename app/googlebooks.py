@@ -13,34 +13,63 @@ logging = custom_logger.get_logger("googlebooks")
 google_api_key = config("GOOGLE_API_KEY")
 
 
-async def getBookDetails(session, user_info_with_identifiers_):
-    user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
-    dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
-    user_id = user_info_with_identifiers["user_id"]
+def get_query_params(dicIdentifier):
     if dicIdentifier.get("Type") == "Title":
-        # url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q={dicIdentifier['Value']}"
-        url = f"https://www.googleapis.com/books/v1/volumes?&q={dicIdentifier['Value']}"
+        query_param = {"q": dicIdentifier["Value"]}
     elif (
         dicIdentifier.get("Type") == "ISBN_10" or dicIdentifier.get("Type") == "ISBN_13"
     ):
-        # url = f"https://www.googleapis.com/books/v1/volumes?key={google_api_key}&q=isbn:{dicIdentifier['Value']}"
-        url = f"https://www.googleapis.com/books/v1/volumes?&q=isbn:{dicIdentifier['Value']}"
-    webPage = await session.request(method="GET", url=url, ssl=False)
-    if webPage.status == 429:
-        logging.error(f"Rate limited, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}, {webPage.headers}")
-        user_info_with_identifiers["google_book_details"] = 429
-        return user_info_with_identifiers
-    elif webPage.status != 200:
-        logging.error(
-            f"Failed request to fetch book details, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}"
-        )
-        user_info_with_identifiers["google_book_details"] = None
-        return user_info_with_identifiers
+        query_param = {"q": f"isbn:{dicIdentifier['Value']}"}
+    if google_api_key != "":
+        query_param["key"] = google_api_key
+    query_param_list = []
+    for k, v in query_param.items:
+        query_param_list.append(k + "=" + v)
+    return "&".join(query_param_list)
+
+
+async def getBookDetails(
+    session, user_info_with_identifiers_, with_key=True, retries=5
+):
+    if with_key:
+        qp = f"&key={google_api_key}"
     else:
-        logging.info(
-            f"Book details fetched for book: {dicIdentifier['Value']} for user: {user_id}"
-        )
-    parsedContent = await webPage.json()
+        qp = ""
+    if retries > 0:
+        user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
+        dicIdentifier = user_info_with_identifiers["new_book_identifiers"]
+        user_id = user_info_with_identifiers["user_id"]
+        if dicIdentifier.get("Type") == "Title":
+            url = f"https://www.googleapis.com/books/v1/volumes?q={dicIdentifier['Value']}{qp}"
+        elif (
+            dicIdentifier.get("Type") == "ISBN_10"
+            or dicIdentifier.get("Type") == "ISBN_13"
+        ):
+            url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{dicIdentifier['Value']}{qp}"
+        webPage = await session.request(method="GET", url=url, ssl=False)
+        if webPage.status == 429:
+            logging.error(
+                f"Rate limited, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}, {webPage.headers}"
+            )
+            return await getBookDetails(
+                session,
+                copy.deepcopy(user_info_with_identifiers_),
+                with_key=False,
+                retries=retries - 1,
+            )
+        elif webPage.status != 200:
+            logging.error(
+                f"Failed request to fetch book details, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}"
+            )
+            user_info_with_identifiers["google_book_details"] = None
+            return user_info_with_identifiers
+        else:
+            logging.info(
+                f"Book details fetched for book: {dicIdentifier['Value']} for user: {user_id}"
+            )
+        parsedContent = await webPage.json()
+    else:
+        parsedContent = {}
     if parsedContent.get("totalItems", 0) > 0:
         listOfBookResults = parsedContent["items"]
         categories = getAllCategories(listOfBookResults)

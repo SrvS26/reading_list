@@ -1,8 +1,6 @@
 from wand.color import Color
 from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
-import sqlite3
 from decouple import config
-import requests
 import os
 from uuid import UUID, uuid4
 import custom_logger
@@ -12,6 +10,7 @@ url = config("BASE_URL")
 imageFolder = config("IMAGE_PATH")
 
 logging = custom_logger.get_logger("image")
+
 
 def getImageDatabase(conn, ourDic):
     cursor = conn.cursor()
