@@ -1,11 +1,7 @@
 import copy
-from turtle import title
-import requests
 import custom_logger
-import json
 from decouple import config
 import string
-import asyncio
 
 
 logging = custom_logger.get_logger("googlebooks")
