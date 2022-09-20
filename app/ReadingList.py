@@ -76,11 +76,11 @@ async def get_added_books_from_notion(session, user_info={}):
 
 def flatten_user_books(user_info_updated):
     user_info_list = []
-    for new_book in user_info_updated["new_book_identifiers"]:
-        # flat_dict = dict()
-        flat_dict = copy.deepcopy(user_info_updated)
-        flat_dict["new_book_identifiers"] = new_book
-        user_info_list.append(flat_dict)
+    if user_info_updated.get("new_book_identifiers") is not None:
+        for new_book in user_info_updated["new_book_identifiers"]:
+            flat_dict = copy.deepcopy(user_info_updated)
+            flat_dict["new_book_identifiers"] = new_book
+            user_info_list.append(flat_dict)
     return user_info_list
 
 
