@@ -1,6 +1,7 @@
 import copy
 import custom_logger
 import string
+import asyncio
 
 ourList = [
     "Title",
@@ -189,6 +190,8 @@ async def updateDatabase(session, user_info_):
     logging.info(
         f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info['new_book_identifiers']['Value']}"
     )
+    # Added to solve the conflict_error, does not completely resolve it, only reduces it. 
+    await asyncio.sleep(1)     
     r = await session.request(
         method="PATCH",
         url=url,
@@ -205,7 +208,7 @@ async def updateDatabase(session, user_info_):
         return user_info
     elif r.status != 200:
         logging.error(
-            f"Could not update database with new book details for {user_id}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}, only updating title/ISBN: {parsed_response}"
+            f"Could not update database with new book details for {user_id}, Title: {availableFields['Title']}, ISBN_13; {availableFields['ISBN_13']}: {parsed_response}"
         )
         return user_info
     else:

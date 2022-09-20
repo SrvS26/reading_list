@@ -113,6 +113,7 @@ async def update_notion_with_bookdetails(session, user_info_with_googlebooks):
 
 
 async def run_main():
+    validated_users_info = usersDatabase.getValidatedTokens(all_users)
     async with ClientSession(trust_env=True) as session:
         user_info_updated = await asyncio.gather(
             *[
@@ -144,6 +145,5 @@ async def run_main():
 
 while True:
     all_users = usersDatabase.getRecords(conn)
-    validated_users_info = usersDatabase.getValidatedTokens(all_users)
     asyncio.run(run_main())
     time.sleep(5)
