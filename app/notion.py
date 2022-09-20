@@ -56,6 +56,7 @@ async def requiredPageDetails(session, user_info_):
             user_info["new_books_added"] = results
             return user_info
         else:
+            parsed_response = await response.json()
             logging.error(
                 f"Failed due to status code: {response.status}, response: {parsed_response} for user: {user_id}"
             )
