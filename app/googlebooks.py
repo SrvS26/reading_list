@@ -53,7 +53,7 @@ async def getBookDetails(
         webPage = await session.request(method="GET", url=url, ssl=False)
         if webPage.status == 429:
             logging.error(
-                f"Rate limited, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status}, {webPage.headers}"
+                f"Rate limited, Book: {dicIdentifier['Value']} for user: {user_id} with {webPage.status} with key: {with_key}"
             )
             return await getBookDetails(
                 session,
@@ -69,7 +69,7 @@ async def getBookDetails(
             return user_info_with_identifiers
         else:
             logging.info(
-                f"Book details fetched for book: {dicIdentifier['Value']} for user: {user_id}"
+                f"Book details fetched for book: {dicIdentifier['Value']} for user: {user_id} with key: {with_key}"
             )
         parsedContent = await webPage.json()
     else:
