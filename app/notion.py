@@ -215,7 +215,7 @@ async def updateDatabase(session, user_info_):
         return user_info
 
 
-def cannotRetrieve(session, user_info_):
+async def cannotRetrieve(session, user_info_):
     user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
     dicOfTitlesOrISBN = user_info["new_book_identifiers"]
@@ -242,7 +242,7 @@ def cannotRetrieve(session, user_info_):
                 }
             }
         }
-    r = session.request(
+    r = await session.request(
         method="PATCH",
         url=url,
         json=payload,
