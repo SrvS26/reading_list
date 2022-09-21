@@ -5,7 +5,7 @@ FORMATTER = logging.Formatter('%(asctime)s.%(msecs)03d - %(levelname)s - %(name)
 LOG_FILE = "app.log"
 
 def get_file_handler():
-    file_handler = TimedRotatingFileHandler(LOG_FILE, when='midnight', backupCount=3)
+    file_handler = TimedRotatingFileHandler(LOG_FILE, when='H', interval=4, backupCount=30)
     file_handler.setFormatter(FORMATTER)
     return file_handler
 
