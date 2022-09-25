@@ -25,7 +25,7 @@ def insertImage(conn, ourDic, finaltitle):
     cursor = conn.cursor()
     imageName = url + "/" + finaltitle + ".jpg"
     if (ourDic.get("ISBN_10") is None and ourDic.get("ISBN_13") is None) or (
-        ourDic.get("ISBN_10") == "" and ourDic.get("ISBN_13") == ""
+        ourDic.get("ISBN_10") == "" or ourDic.get("ISBN_13") == ""
     ):
         return imageName
     else:
