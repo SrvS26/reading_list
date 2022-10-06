@@ -23,14 +23,15 @@ CREATE TABLE IF NOT EXISTS IMAGES (
 );
 
 
-ALTER TABLE USERS ADD COLUMN status VARCHAR(255);
+-- ALTER TABLE USERS ADD COLUMN user_status VARCHAR(255);
 
-CREATE TABLE IF NOT EXISTS Goodreads (
+CREATE TABLE IF NOT EXISTS GOODREADS (
             database_id VARCHAR(255),
             user_id VARCHAR(255),
             num_books INT,
-            num_books_failed INT,
-            status VARCHAR (255),
+            num_books_unfilled INT,
+            goodreads_status VARCHAR (255),
+            is_processed INT DEFAULT 0 NOT NULL,
             FOREIGN KEY(user_id) REFERENCES USERS(user_id)
 );  
 
