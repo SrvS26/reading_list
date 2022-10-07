@@ -14,6 +14,7 @@ ourList = [
     "Pages",
     "ISBN_13",
     "Summary_extd",
+    "Other Identifier"
 ]
 
 logging = custom_logger.get_logger("notion")
@@ -179,6 +180,9 @@ async def updateDatabase(session, user_info_):
             },
             "ISBN_13": {
                 "rich_text": [{"text": {"content": availableFields["ISBN_13"]}}]
+            },
+            "Other Identifier":{
+                "rich_text": [{"text": {"content": availableFields["Other Identifier"]}}]
             },
             "Pages": {"number": availableFields["Pages"]},
             "Title": {"title": [{"text": {"content": title}}]},
