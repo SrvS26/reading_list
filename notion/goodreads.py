@@ -127,7 +127,7 @@ def get_csvfile(results):
     else:
         return None, None    
 
-def updateDatabase(triggerDetails, databaseID, token, finalSet):
+def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
     url = f'https://api.notion.com/v1/pages'
     title = triggerDetails["Title"]
     payload = {
@@ -260,6 +260,141 @@ def updateDatabase(triggerDetails, databaseID, token, finalSet):
     else:
         logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
     return            
+
+def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
+    url = f'https://api.notion.com/v1/pages'
+    title = triggerDetails["Title"]
+    payload = {
+	    "parent": {
+				"type": "database_id",
+				"database_id": f"{databaseID}"
+			    },
+	    "properties": {
+			"Title": {
+				"title": [
+					{
+					"text": {
+						"content": triggerDetails["Title"]
+						}
+					}
+				]
+			},
+			"Status": {
+                "type": "status",
+				"status": {
+					"name": triggerDetails["status"]
+				}
+			},
+			"Source": {
+				"type": "select",
+				"select": {
+					"name": "Goodreads"
+				}
+			},
+			"Rating": {
+				"type": "select",
+				"select": {
+					"name": "⭐" * int(triggerDetails["myRating"])
+				}
+	        },
+			"ISBN_13": {
+				"type": "rich_text",
+				"rich_text": [
+						{
+						"type": "text",
+						"text": {
+							"content": triggerDetails["ISBN_13"]
+						},
+						"plain_text": triggerDetails["ISBN_13"]
+					}
+				]
+			},
+			"ISBN_10": {
+				"type": "rich_text",
+				"rich_text": [
+						{
+						"type": "text",
+						"text": {
+							"content": triggerDetails["ISBN_10"]
+						},
+						"plain_text": triggerDetails["ISBN_10"]
+    				}
+				]
+			}
+		},
+	    "children": [
+		    {
+			    "type": "heading_1",
+			    "heading_1": {
+				    "rich_text": [{
+					    "type": "text",
+					    "text": {
+						    "content": "My Review"
+					}
+			}],
+				"color": "default",
+			}
+		},
+		{"type": "paragraph",
+		"paragraph": {
+			"rich_text": [{
+				"type": "text",
+				"text": {
+					"content": triggerDetails["myReview"]
+				}
+			}],
+			"color": "default"
+		}
+		},
+		{"type": "heading_1",
+			"heading_1": {
+				"rich_text": [{
+					"type": "text",
+					"text": {
+						"content": "My Notes"
+					}
+				}],
+				"color": "default",
+			}
+		},
+		{
+            "type": "paragraph",
+		    "paragraph": {
+			"rich_text": [{
+				"type": "text",
+				"text": {
+					"content": triggerDetails["myNotes"]
+				}
+			}],
+			    "color": "default"
+		}
+		}
+		],
+			"icon": {
+			"type": "external",
+			"external": {
+				"url": "https://www.notion.so/icons/book-closed_gray.svg"
+				}
+			}
+        }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Notion-Version": "2022-06-28",
+        "Authorization": f"Bearer {token}"
+    }
+    for item in finalSet:
+        del payload["properties"][item] 
+    if int(triggerDetails["myRating"]) == 0:
+        del payload["properties"]["Rating"]    
+    response = requests.request("POST", url, json=payload, headers=headers)
+    status = response.status_code
+    if status == 200:
+        logging.info(f"Page created for book {title}")
+    else:
+        logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
+    return     
+
 
 
 def status(user_id, access_token, page_id, num_books, count):

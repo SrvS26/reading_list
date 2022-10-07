@@ -343,7 +343,7 @@ while True:
                     trigger_data, books_unfilled = process_csv.addtrigger(mapped_dic)
                     for book in trigger_data:
                         print (book)
-                        notion.goodreads.updateDatabase(book, item["bookshelf_database_id"], item["access_token"], missing_fields)
+                        notion.goodreads.updateDatabaseNew(book, item["bookshelf_database_id"], item["access_token"], missing_fields)
                     notion.goodreads.status(item["user_id"], item["access_token"], page_id, num_books, books_unfilled)
                     goodreads.goodreads.update_goodreads(item["user_id"], num_books, books_unfilled)
 
