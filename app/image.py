@@ -9,7 +9,7 @@ databaseFile = config("DATABASE_FILE_PATH")
 url = config("BASE_URL")
 imageFolder = config("IMAGE_PATH")
 
-logging = custom_logger.get_logger("image")
+logging, listener = custom_logger.get_logger("image")
 
 
 def getImageDatabase(conn, ourDic):

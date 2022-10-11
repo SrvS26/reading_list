@@ -4,7 +4,7 @@ from decouple import config
 import string
 
 
-logging = custom_logger.get_logger("googlebooks")
+logging, listener = custom_logger.get_logger("googlebooks")
 
 google_api_key = config("GOOGLE_API_KEY")
 

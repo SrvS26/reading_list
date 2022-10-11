@@ -17,7 +17,7 @@ ourList = [
     "Other Identifier"
 ]
 
-logging = custom_logger.get_logger("notion")
+logging, listener = custom_logger.get_logger("notion")
 
 
 def default_headers(token):

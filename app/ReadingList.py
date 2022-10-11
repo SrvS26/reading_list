@@ -47,7 +47,7 @@ google_api_key = config("GOOGLE_API_KEY")
 
 url = config("BASE_URL")
 
-logging = custom_logger.get_logger("ReadingList")
+logging, listener = custom_logger.get_logger("ReadingList")
 
 conn = usersDatabase.connectDatabase(databaseFile)
 
@@ -147,5 +147,7 @@ async def run_main():
 
 
 while True:
+    listener.start()
     asyncio.run(run_main())
     time.sleep(5)
+    listener.stop()
