@@ -14,7 +14,7 @@ ourList = [
     "Pages",
     "ISBN_13",
     "Summary_extd",
-    "Other Identifier"
+    "Other Identifier",
 ]
 
 logging, listener = custom_logger.get_logger("notion")
@@ -181,8 +181,10 @@ async def updateDatabase(session, user_info_):
             "ISBN_13": {
                 "rich_text": [{"text": {"content": availableFields["ISBN_13"]}}]
             },
-            "Other Identifier":{
-                "rich_text": [{"text": {"content": availableFields["Other Identifier"]}}]
+            "Other Identifier": {
+                "rich_text": [
+                    {"text": {"content": availableFields["Other Identifier"]}}
+                ]
             },
             "Pages": {"number": availableFields["Pages"]},
             "Title": {"title": [{"text": {"content": title}}]},
@@ -193,8 +195,8 @@ async def updateDatabase(session, user_info_):
     logging.info(
         f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info['new_book_identifiers']['Value']}"
     )
-    # Added to solve the conflict_error, does not completely resolve it, only reduces it. 
-    await asyncio.sleep(1)     
+    # Added to solve the conflict_error, does not completely resolve it, only reduces it.
+    await asyncio.sleep(1)
     r = await session.request(
         method="PATCH",
         url=url,

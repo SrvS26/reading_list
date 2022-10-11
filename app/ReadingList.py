@@ -20,7 +20,7 @@ ourList = [
     "Pages",
     "ISBN_13",
     "Summary_extd",
-    "Other Identifier"
+    "Other Identifier",
 ]
 
 ourDic = {
@@ -36,7 +36,7 @@ ourDic = {
     "Pages": None,
     "ISBN_13": "",
     "Image_url": "",
-    "Other Identifier": ""
+    "Other Identifier": "",
 }
 
 databaseFile = config("DATABASE_FILE_PATH")
