@@ -13,7 +13,7 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source"]
+ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Added", "Date Started"]
 
 
 def get_goodreads_data(token):
@@ -128,14 +128,14 @@ def get_csvfile(results):
         return None, None    
 
 def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
-    url = f'https://api.notion.com/v1/pages'
-    title = triggerDetails["Title"]
-    payload = {
-	    "parent": {
+	url = f'https://api.notion.com/v1/pages'
+	title = triggerDetails["Title"]
+	payload = {
+		"parent": {
 				"type": "database_id",
 				"database_id": f"{databaseID}"
-			    },
-	    "properties": {
+					},
+		"properties": {
 			"Title": {
 				"title": [
 					{
@@ -146,10 +146,13 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 				]
 			},
 			"Status": {
-                "type": "select",
+				"type": "select",
 				"select": {
 					"name": triggerDetails["status"]
 				}
+			},
+			"Authors" : {
+				"multi_select" : triggerDetails["Authors"]
 			},
 			"Source": {
 				"type": "select",
@@ -162,7 +165,19 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 				"select": {
 					"name": "⭐" * int(triggerDetails["myRating"])
 				}
-	        },
+			},
+			"Date Completed": {
+				"type": "date",
+				"date": {
+					"start": triggerDetails["Date Completed"]
+				}
+			},
+			"Date Added": {
+				"type": "date",
+				"date": {
+					"start": triggerDetails["Date Added"]
+				}
+			},
 			"ISBN_13": {
 				"type": "rich_text",
 				"rich_text": [
@@ -184,18 +199,18 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 							"content": triggerDetails["ISBN_10"]
 						},
 						"plain_text": triggerDetails["ISBN_10"]
-    				}
+					}
 				]
 			}
 		},
-	    "children": [
-		    {
-			    "type": "heading_1",
-			    "heading_1": {
-				    "rich_text": [{
-					    "type": "text",
-					    "text": {
-						    "content": "My Review"
+		"children": [
+			{
+				"type": "heading_1",
+				"heading_1": {
+					"rich_text": [{
+						"type": "text",
+						"text": {
+							"content": "My Review"
 					}
 			}],
 				"color": "default",
@@ -224,15 +239,15 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 			}
 		},
 		{
-            "type": "paragraph",
-		    "paragraph": {
+			"type": "paragraph",
+			"paragraph": {
 			"rich_text": [{
 				"type": "text",
 				"text": {
 					"content": triggerDetails["myNotes"]
 				}
 			}],
-			    "color": "default"
+				"color": "default"
 		}
 		}
 		],
@@ -242,34 +257,39 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 				"url": "https://www.notion.so/icons/book-closed_gray.svg"
 				}
 			}
-        }
-    headers = {
+		}
+	headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Notion-Version": "2022-06-28",
         "Authorization": f"Bearer {token}"
-    }
-    for item in finalSet:
-        del payload["properties"][item] 
-    if int(triggerDetails["myRating"]) == 0:
-        del payload["properties"]["Rating"]    
-    response = requests.request("POST", url, json=payload, headers=headers)
-    status = response.status_code
-    if status == 200:
-        logging.info(f"Page created for book {title}")
-    else:
-        logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
-    return            
+	}
+	if triggerDetails["Date Added"] == "":
+		del payload["properties"]["Date Added"]
+	if triggerDetails["Date Completed"] == "":
+		del payload["properties"]["Date Completed"]	  
+	for item in finalSet:
+		del payload["properties"][item] 
+	if int(triggerDetails["myRating"]) == 0:
+		del payload["properties"]["Rating"]    
+	response = requests.request("POST", url, json=payload, headers=headers)
+	status = response.status_code
+	if status == 200:
+		logging.info(f"Page created for book {title}")
+		return status
+	else:
+		logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
+		return title
 
 def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
-    url = f'https://api.notion.com/v1/pages'
-    title = triggerDetails["Title"]
-    payload = {
-	    "parent": {
+	url = f'https://api.notion.com/v1/pages'
+	title = triggerDetails["Title"]
+	payload = {
+		"parent": {
 				"type": "database_id",
 				"database_id": f"{databaseID}"
-			    },
-	    "properties": {
+				},
+		"properties": {
 			"Title": {
 				"title": [
 					{
@@ -280,7 +300,7 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 				]
 			},
 			"Status": {
-                "type": "status",
+				"type": "status",
 				"status": {
 					"name": triggerDetails["status"]
 				}
@@ -291,12 +311,25 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 					"name": "Goodreads"
 				}
 			},
+			"Dates": {
+				"type": "date",
+				"date": {
+					"start": triggerDetails["Date Completed"],
+					"end": triggerDetails["Date Started"]
+				}
+			},
+			"Date Added": {
+				"type": "date",
+				"date": {
+					"start": triggerDetails["Date Added"]
+				}
+			},
 			"Rating": {
 				"type": "select",
 				"select": {
 					"name": "⭐" * int(triggerDetails["myRating"])
 				}
-	        },
+			},
 			"ISBN_13": {
 				"type": "rich_text",
 				"rich_text": [
@@ -318,18 +351,18 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 							"content": triggerDetails["ISBN_10"]
 						},
 						"plain_text": triggerDetails["ISBN_10"]
-    				}
+					}
 				]
 			}
 		},
-	    "children": [
-		    {
-			    "type": "heading_1",
-			    "heading_1": {
-				    "rich_text": [{
-					    "type": "text",
-					    "text": {
-						    "content": "My Review"
+		"children": [
+			{
+				"type": "heading_1",
+				"heading_1": {
+					"rich_text": [{
+						"type": "text",
+						"text": {
+							"content": "My Review"
 					}
 			}],
 				"color": "default",
@@ -358,15 +391,15 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 			}
 		},
 		{
-            "type": "paragraph",
-		    "paragraph": {
+			"type": "paragraph",
+			"paragraph": {
 			"rich_text": [{
 				"type": "text",
 				"text": {
 					"content": triggerDetails["myNotes"]
 				}
 			}],
-			    "color": "default"
+				"color": "default"
 		}
 		}
 		],
@@ -376,38 +409,53 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 				"url": "https://www.notion.so/icons/book-closed_gray.svg"
 				}
 			}
-        }
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Notion-Version": "2022-06-28",
-        "Authorization": f"Bearer {token}"
+		}
+	headers = {
+		"Content-Type": "application/json",
+    	"Accept": "application/json",
+    	"Notion-Version": "2022-06-28",
+    	"Authorization": f"Bearer {token}"
     }
-    for item in finalSet:
-        del payload["properties"][item] 
-    if int(triggerDetails["myRating"]) == 0:
-        del payload["properties"]["Rating"]    
-    response = requests.request("POST", url, json=payload, headers=headers)
-    status = response.status_code
-    if status == 200:
-        logging.info(f"Page created for book {title}")
-    else:
-        logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
-    return     
+	if triggerDetails["Date Added"] == "":
+		del payload["properties"]["Date Added"]
+	if triggerDetails["Date Completed"] == "":
+		del payload["properties"]["Dates"]	  
+	for item in finalSet:
+		del payload["properties"][item] 
+	if int(triggerDetails["myRating"]) == 0:
+		del payload["properties"]["Rating"]    
+	response = requests.request("POST", url, json=payload, headers=headers)
+	status = response.status_code
+	if status == 200:
+		logging.info(f"Page created for book {title}")
+		return status
+	else:
+		logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
+		return title  
 
 
 
-def status(user_id, access_token, page_id, num_books, count):
-    num = num_books - count
-    url = f"https://api.notion.com/v1/pages/{page_id}"
-    message = f"Number of books fetched: {num_books}\nNumber of books autofilled: {num}"
-    payload = {
+def status(user_id, access_token, page_id, num_books, count, books_not_added, books_unfilled):
+	num = count - books_unfilled
+	books_missed = ",".join(books_not_added)
+	url = f"https://api.notion.com/v1/pages/{page_id}"
+	message = f"Number of books in file: {num_books}\nNumber of books added: {count}\nNumber of books autofilled: {num}\nBooks not added:{books_missed}"
+	payload = {
         "properties": {
+			"Title": {
+				"title": [
+					{
+					"text": {
+						"content": "Goodreads"
+						}
+					}
+				]
+			},	
             "Status": {"rich_text": [{"text": {"content": message}}]}
         }
     }
-    try:
-        r = requests.patch(
+	try:
+		r = requests.patch(
             url,
             json=payload,
             headers={
@@ -416,14 +464,14 @@ def status(user_id, access_token, page_id, num_books, count):
                 "Content-Type": "application/json",
             },
         )
-        statusCode = r.status_code
-        if statusCode != 200:
-            logging.error(
+		statusCode = r.status_code
+		if statusCode != 200:
+			logging.error(
                 f"Could not patch message to Notion database:{statusCode} for user: {user_id}"
-            )
-            return
-    except Exception as e:
-        logging.exception(
-            f"Could not patch message to Notion database:{e} for user: {user_id}"
-        )
-        return	
+        	)
+			return
+	except Exception as e:
+		logging.exception(
+			f"Could not patch message to Notion database:{e} for user: {user_id}"
+		)
+		return	

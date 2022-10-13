@@ -19,7 +19,7 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source"]
+ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Added", "Date Started"]
 
 conn = sqlite3.connect(databaseFile)
 
@@ -340,11 +340,16 @@ while True:
                 extracted_data, num_books = process_csv.extract_csv(csv_file)
                 if extracted_data is not None:
                     mapped_dic = process_csv.map_csv_to_notion_fields(extracted_data)
-                    trigger_data, books_unfilled = process_csv.addtrigger(mapped_dic)
-                    for book in trigger_data:
-                        print (book)
-                        notion.goodreads.updateDatabaseNew(book, item["bookshelf_database_id"], item["access_token"], missing_fields)
-                    notion.goodreads.status(item["user_id"], item["access_token"], page_id, num_books, books_unfilled)
+                    # trigger_data, books_unfilled = process_csv.addtrigger(mapped_dic)
+                    # count = 0
+                    # books_not_added = []
+                    for book in mapped_dic:
+                        status = notion.goodreads.updateDatabaseNew(book, item["bookshelf_database_id"], item["access_token"], missing_fields)
+                        if status == 200:
+                            count+=1
+                        else:
+                            books_not_added.append(status)            
+                    notion.goodreads.status(item["user_id"], item["access_token"], page_id, num_books, count, books_not_added, books_unfilled)
                     goodreads.goodreads.update_goodreads(item["user_id"], num_books, books_unfilled)
 
 
