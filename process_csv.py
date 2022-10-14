@@ -2,6 +2,7 @@ import requests
 import csv
 from datetime import datetime, timedelta
 import logging
+import scrape_goodreads
 
 logging.basicConfig(
     filename="goodreads.log",
@@ -25,10 +26,25 @@ def map_csv_to_notion_fields(listDictCSV):
     bookDetails = []
     for item in listDictCSV:
         myDic = {}
+        # image_link, summary, categories = scrape_goodreads.get_book_details(item["Book Id"], scrape_goodreads.user_agent())
+        # myDic["Image_url"] = image_link
+        # if len(summary)> 2000:
+        #     summary = summary[:1997] + "..."
+        #     summaryExtd = summary[1998:]
+        #     myDic["summaryExtd"] = summaryExtd
+        # myDic["summary"] = summary
+        # myDic["categories"] = categories
         myDic["goodreadsID"] = item.get("Book Id", "")
-        myDic["Author"] = item.get("Author","") + "," + item.get("Additional Authors", "")
+        authorsList = []
+        author = {}
+        author["name"] = item.get("Author","")
+        authorsList.append(author)
+        myDic["Author"] = authorsList
         myDic["Publisher"] = item.get("Publisher", "")
-        myDic["Pages"]=item.get("Number of Pages", 0)
+        if item["Number of Pages"] != "":
+            myDic["Pages"] = int(item.get("Number of Pages", 0))
+        else:
+            myDic["Pages"] = None    
         myDic["Published"] =item.get("Year Published", "")
         myDic["Title"] = item.get("Title", "")
         myDic["ISBN_13"] = item.get("ISBN13", '').replace('="', '').replace('"', '')
@@ -64,6 +80,8 @@ def map_csv_to_notion_fields(listDictCSV):
                 myDic["Date Added"] = ""
         bookDetails.append(myDic)
     return bookDetails
+
+
 
 # def addtrigger(bookDetails):
 #     count = 0

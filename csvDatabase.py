@@ -4,9 +4,13 @@ import requests
 import logging
 from decouple import config
 import sqlite3
+import app.image as image
 import process_csv
 import goodreads.goodreads
 import notion.goodreads
+import app.custom_logger
+import scrape_goodreads
+
 
 databaseFile = config("DATABASE_FILE_PATH")
 clientID = config("NOTION_CLIENT_ID")
@@ -340,17 +344,19 @@ while True:
                 extracted_data, num_books = process_csv.extract_csv(csv_file)
                 if extracted_data is not None:
                     mapped_dic = process_csv.map_csv_to_notion_fields(extracted_data)
-                    # trigger_data, books_unfilled = process_csv.addtrigger(mapped_dic)
-                    # count = 0
-                    # books_not_added = []
-                    for book in mapped_dic:
-                        status = notion.goodreads.updateDatabaseNew(book, item["bookshelf_database_id"], item["access_token"], missing_fields)
+                    count = 0                    
+                    for item in mapped_dic:
+                        books_not_added=[]
+                        book = scrape_goodreads.add_to_dic(item)
+                        # file = book["Image_url"]
+                        image_link = image.upload_Image(conn, book)
+                        status = notion.goodreads.updateDatabaseNew(book, bookshelf_database_id, access_token, missing_fields, image_link)
                         if status == 200:
                             count+=1
                         else:
-                            books_not_added.append(status)            
-                    notion.goodreads.status(item["user_id"], item["access_token"], page_id, num_books, count, books_not_added, books_unfilled)
-                    goodreads.goodreads.update_goodreads(item["user_id"], num_books, books_unfilled)
+                            books_not_added.append(status)         
+                    notion.goodreads.status(user_id, access_token, page_id, num_books, count, books_not_added)
+                    goodreads.goodreads.update_goodreads(user_id, num_books, count)
 
 
         

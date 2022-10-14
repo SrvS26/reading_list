@@ -168,3 +168,5 @@ def getAllCategories(allResults):
         allCategories = allCategories + categories
     finalCategories = set(allCategories)
     return finalCategories
+
+

@@ -1,5 +1,3 @@
-from itertools import count
-from xml.dom import NoModificationAllowedErr
 import requests
 import logging
 from decouple import config
@@ -13,79 +11,99 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Added", "Date Started"]
+ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
 
 
 def get_goodreads_data(token):
-    databaseIDurl = " https://api.notion.com/v1/search"
-    params = {
-            "filter": {"value": "database", "property": "object"}
-        }
-    try:
-        response = requests.post(
-            databaseIDurl,
-            headers={
-                "Notion-Version": "2022-02-22",
-                    "Authorization": "Bearer " + token,
-                },
-                data=params
-            )
-        if response.status_code !=200:
-            logging.error(f"Could not fetch databaseID for Goodreads database: {response.status_code}")
-            return
-        else:    
-            parsedResponse = response.json()
-            return parsedResponse
-    except Exception as e:
-        return
+	url = "https://api.notion.com/v1/search"
 
+	payload = {"filter": {
+			"value": "database",
+			"property": "object"
+		}}
+	headers = {
+		"Content-Type": "application/json",
+		"Notion-Version": "2022-02-22",
+		"Authorization": f"Bearer {token}"
+	}
+	response = requests.request("POST", url, json=payload, headers=headers)
+	if response.status_code !=200:
+		logging.error(f"Could not fetch databaseID for Goodreads database: {response.status_code}")
+		return
+	else:    
+		parsedResponse = response.json()
+		return parsedResponse
+
+    # databaseIDurl = "https://api.notion.com/v1/search"
+    # params = {
+	# "filter" : {
+	# 	"value" : "database",
+	# 	"property" : "object"
+	# 			}
+	# 		}
+    # try:
+    #     response = requests.post(
+    #         databaseIDurl,
+    #         headers={
+    #             "Notion-Version": "2022-06-28",
+    #                 "Authorization": "Bearer " + token,
+	# 				"Content-Type": "application/json"
+    #             },
+    #             data=params
+    #         )
+    #     if response.status_code !=200:
+    #         logging.error(f"Could not fetch databaseID for Goodreads database: {response.status_code}")
+    #         return
+    #     else:    
+    #         parsedResponse = response.json()
+    #         return parsedResponse
+    # except Exception as e:
+    #     return
 
 def get_goodreads_id(parsedResponse):
-    results = parsedResponse.get("results")
-    if results is not None:
-        databaseDetails = None
-        for item in results:
-            try:
-                databaseTitle = (
-                    (item.get("title", [{}])[0]).get("text", {}).get("content")
-                )
-            except Exception as e:
-                logging.exception(f"Could not get database details: {e}, {parsedResponse}")
-                databaseTitle = None
-            if databaseTitle == "Goodreads":
-                databaseDetails = item
-                break
-        if databaseDetails is None:
-            logging.error(f"Goodreads database not found")
-            return None
-        else:
-            database_id = databaseDetails.get("id")
-            return database_id
-    else:
-        logging.error(f"No databases found")
-        return None        
+	if parsedResponse is not None:
+		results = parsedResponse.get("results")
+		if results is not None and len(results) != 0:
+			databaseDetails = None
+			for item in results:
+				databaseTitle = (
+						(item.get("title", [{}])[0]).get("text", {}).get("content")
+					)
+				if databaseTitle == "Goodreads":
+					databaseDetails = item
+					break
+			if databaseDetails is None:
+				logging.error(f"Goodreads database not found")
+				return None
+			else:
+				database_id = databaseDetails.get("id")
+				return database_id
+		else:
+			logging.error(f"No databases found")
+			return None        
 
 
 def get_available_fields(parsedResponse):
-    allAvailableList = []
-    results = parsedResponse.get("results")
-    if results is not None:    
-        for item in results:
-            try:
-                databaseTitle = (
-                    (item.get("title", [{}])[0]).get("text", {}).get("content")
-                )
-            except Exception as e:
-                logging.exception(f"Could not get database details: {e}, {parsedResponse}")
-                return None
-            if databaseTitle == "Bookshelf":
-                databaseDetails = item                   
-                requiredPropertiesGeneral = databaseDetails["properties"]    
-                for item in requiredPropertiesGeneral.keys():                       
-                    if item in ourList:                                             
-                        allAvailableList.append(item)   
-                        logging.info("All available fields to fill in BookShelf fetched")                                     
-    return allAvailableList     
+	allAvailableList = []
+	if parsedResponse is not None:
+		results = parsedResponse.get("results")
+		if results is not None:    
+			for item in results:
+				try:
+					databaseTitle = (
+						(item.get("title", [{}])[0]).get("text", {}).get("content")
+					)
+				except Exception as e:
+					logging.exception(f"Could not get database details: {e}, {parsedResponse}")
+					return None
+				if databaseTitle == "Bookshelf":
+					databaseDetails = item                   
+					requiredPropertiesGeneral = databaseDetails["properties"]    
+					for item in requiredPropertiesGeneral.keys():                       
+						if item in ourList:                                             
+							allAvailableList.append(item)   
+							logging.info("All available fields to fill in BookShelf fetched")                                     
+	return allAvailableList     
 
 
 def missing_fields(allAvailableList):
@@ -281,13 +299,17 @@ def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
 		logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
 		return title
 
-def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
+def updateDatabaseNew(triggerDetails, databaseID, token, finalSet, image_link):
 	url = f'https://api.notion.com/v1/pages'
 	title = triggerDetails["Title"]
 	payload = {
+		"cover" : {
+			"type": "external",
+			"external" : {"url": image_link},
+		},
 		"parent": {
 				"type": "database_id",
-				"database_id": f"{databaseID}"
+				"database_id": databaseID
 				},
 		"properties": {
 			"Title": {
@@ -299,12 +321,29 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 					}
 				]
 			},
+			"Authors": {"multi_select": triggerDetails["Author"]},
+            "Summary": {
+                "rich_text": [{"text": {"content": triggerDetails["Summary"]}}]
+            },
+            "Summary_extd": {
+                "rich_text": [{"text": {"content": triggerDetails["SummaryExtd"]}}]
+            },
+			"Category": {"multi_select": triggerDetails["Categories"]},
+            "Published": {
+                "rich_text": [{"text": {"content": triggerDetails["Published"]}}]
+            },
+			"Pages": {"number": triggerDetails["Pages"]},
 			"Status": {
 				"type": "status",
 				"status": {
 					"name": triggerDetails["status"]
 				}
 			},
+			"Publisher": {
+                "rich_text": [
+                    {"text": {"content": triggerDetails["Publisher"]}}
+                ]
+            },
 			"Source": {
 				"type": "select",
 				"select": {
@@ -314,8 +353,8 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 			"Dates": {
 				"type": "date",
 				"date": {
-					"start": triggerDetails["Date Completed"],
-					"end": triggerDetails["Date Started"]
+					"start": triggerDetails["Date Started"],
+					"end": triggerDetails["Date Completed"]
 				}
 			},
 			"Date Added": {
@@ -435,14 +474,13 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet):
 
 
 
-def status(user_id, access_token, page_id, num_books, count, books_not_added, books_unfilled):
-	num = count - books_unfilled
-	books_missed = ",".join(books_not_added)
+def status(user_id, access_token, page_id, num_books, count, books_not_added):
+	books_missed = ", ".join(books_not_added)
 	url = f"https://api.notion.com/v1/pages/{page_id}"
-	message = f"Number of books in file: {num_books}\nNumber of books added: {count}\nNumber of books autofilled: {num}\nBooks not added:{books_missed}"
+	message = f"Number of books in file: {num_books}\nNumber of books added: {count}\nBooks not added: {books_missed}"
 	payload = {
         "properties": {
-			"Title": {
+			"Name": {
 				"title": [
 					{
 					"text": {
@@ -467,7 +505,7 @@ def status(user_id, access_token, page_id, num_books, count, books_not_added, bo
 		statusCode = r.status_code
 		if statusCode != 200:
 			logging.error(
-                f"Could not patch message to Notion database:{statusCode} for user: {user_id}"
+                f"Could not patch message to Notion database:{statusCode} for user: {user_id}, {r.json()}"
         	)
 			return
 	except Exception as e:

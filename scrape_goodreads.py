@@ -1,10 +1,15 @@
-from cmath import e
 import requests
+import logging
 import random
 from bs4 import BeautifulSoup
 import time
 
-
+logging.basicConfig(
+    filename="goodreads.log",
+    format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+    level = logging.DEBUG
+)
 
 def user_agent():
     user_agents = [
@@ -21,18 +26,52 @@ def get_book_details(goodreads_id, user_agent):
     url = f"{base_url}{goodreads_id}"
     headers = {"User-Agent": user_agent}
     img_deets = None
-    while img_deets is None or len(img_deets) == 0:
+    count = 0
+    while img_deets is None or len(img_deets) == 0 and count < 10:
         try:
             r = requests.get(url, headers=headers)
-            status = r.status_code
-            print (status)
             html_doc = r.content
             soup = BeautifulSoup(html_doc, "html.parser") 
             img_deets = soup.find_all("img", id="coverImage")[0]["src"]
+            count += 1
             time.sleep(1)
         except Exception as e:
-            print (e)                   
-    return img_deets
+            count += 1     
+    summary_deets = soup.find_all("div", id="descriptionContainer")
+    summary = ""
+    if summary_deets is not None and len(summary_deets) != 0: 
+        get_summary = summary_deets[0].find_all("span", style="display:none")
+        if get_summary is not None and len(get_summary) != 0:
+            final_summary = get_summary[0]
+            for string in final_summary.strings:
+                summary = summary + string        
+    categories = []
+    category_deets = soup.find_all("div", class_="bigBoxBody")
+    if category_deets is not None and len(category_deets) != 0:
+        for item in category_deets:
+            category_list = item.find_all("div", class_="elementList")
+            if len(category_list) != 0 and category_list is not None:
+                for c in category_list:
+                    category = c.find("div", class_="left")
+                    if category is not None:
+                        dic_final_category = {}
+                        final_category = category.find("a").string
+                        if final_category is not None:    
+                            dic_final_category["name"] = final_category 
+                            categories.append(dic_final_category)                     
+    return img_deets, summary, categories
 
 
-get_book_details(555, user_agent())
+       
+def add_to_dic(myDic):
+    image_link, summary, categories = get_book_details(myDic["goodreadsID"], user_agent())
+    myDic["Image_url"] = image_link
+    if len(summary)> 2000:
+        summary = summary[:1997] + "..."
+        summaryExtd = summary[1998:]
+        myDic["SummaryExtd"] = summaryExtd
+    else:
+        myDic["SummaryExtd"] = ""    
+    myDic["Summary"] = summary
+    myDic["Categories"] = categories
+    return myDic

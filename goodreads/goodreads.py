@@ -52,11 +52,12 @@ def update_goodreads_id(database_id, user_id):
     cursor_object.close()
     return         
 
-def update_goodreads(user_id, num_books, num_books_unfilled):
+def update_goodreads(user_id, num_books, count):
+    num_books_not_added = num_books - count
     conn = sqlite3.connect(databaseFile)
     logging.debug(f"Connected to database file '{databaseFile}'")
     cursor_object = conn.cursor()
-    data = f"UPDATE GOODREADS SET num_books = '{num_books}', num_books_unfilled = '{num_books_unfilled}', is_processed = 1 WHERE user_id = '{user_id}'" 
+    data = f"UPDATE GOODREADS SET num_books = '{num_books}', num_books_unfilled = '{num_books_not_added}', is_processed = 1 WHERE user_id = '{user_id}'" 
     try:
         cursor_object.execute(data)
         logging.info(f"Inserted ID into table for user {user_id}")
