@@ -9,24 +9,26 @@ map $sent_http_content_type $expires {
 }
 
 server {
-    server_name seven-forward.com www.seven-forward.com;
+	
+#    server_name seven-forward.com www.seven-forward.com;
 #    server_name notion-reading-list.eastus2.cloudapp.azure.com;
-
+	 listen 80;
+        listen [::]:80;
     expires $expires;
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/home/sevenforward/reading_list/server/publicInteg.sock;
+        uwsgi_pass unix:/home/ubuntu/reading_list/server/publicInteg.sock;
     }
 
     location ^~ /static/  {
         include /etc/nginx/mime.types;
-	    root /home/sevenforward/reading_list/server/;
+	    root /home/ubuntu/reading_list/server/;
     }
 
     location ^~ /images/ {
         include /etc/nginx/mime.types;
-        root /home/sevenforward/;
+        root /home/ubuntu/;
     }
 
 #    listen 443 ssl; # managed by Certbot
@@ -38,31 +40,31 @@ server {
 
 
 
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/seven-forward.com/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/seven-forward.com/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+#    listen 443 ssl; # managed by Certbot
+#    ssl_certificate /etc/letsencrypt/live/seven-forward.com/fullchain.pem; # managed by Certbot
+#    ssl_certificate_key /etc/letsencrypt/live/seven-forward.com/privkey.pem; # managed by Certbot
+#    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+#    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 
 
 }
 
-server {
-    if ($host = www.seven-forward.com) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
+#server {
+#    if ($host = www.seven-forward.com) {
+#        return 301 https://$host$request_uri;
+#    } # managed by Certbot
 
 
-    if ($host = seven-forward.com) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
+#    if ($host = seven-forward.com) {
+#        return 301 https://$host$request_uri;
+#    } # managed by Certbot
 
 
-    server_name seven-forward.com www.seven-forward.com;
-    listen 80;
-    return 404; # managed by Certbot
+#    server_name seven-forward.com www.seven-forward.com;
+#    listen 80;
+#    return 404; # managed by Certbot
 
 
 
 
-}
+#}
