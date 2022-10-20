@@ -50,7 +50,6 @@ def map_csv_to_notion_fields(listDictCSV):
         myDic["ISBN_13"] = item.get("ISBN13", '').replace('="', '').replace('"', '')
         myDic["ISBN_10"] = item.get("ISBN", '').replace('="', '').replace('"', '')
         myDic["myRating"] = item.get("My Rating", 0)
-        myDic["dateStarted"] = item.get("Date Read", '')
         if item.get("Exclusive Shelf") == "read":
             myDic["status"] = "Done"
         elif item.get("Exclusive Shelf") == "to-read":

@@ -23,7 +23,8 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Added", "Date Started"]
+ourListV2 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
+ourListV1 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
 
 conn = sqlite3.connect(databaseFile)
 

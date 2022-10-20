@@ -11,7 +11,8 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
+ourListV2 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
+ourListV1 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
 
 
 def get_goodreads_data(token):
@@ -100,14 +101,14 @@ def get_available_fields(parsedResponse):
 					databaseDetails = item                   
 					requiredPropertiesGeneral = databaseDetails["properties"]    
 					for item in requiredPropertiesGeneral.keys():                       
-						if item in ourList:                                             
+						if item in ourListV2:                                             
 							allAvailableList.append(item)   
 							logging.info("All available fields to fill in BookShelf fetched")                                     
 	return allAvailableList     
 
 
 def missing_fields(allAvailableList):
-    finalSet = set(ourList) - set(allAvailableList)
+    finalSet = set(ourListV2) - set(allAvailableList)
     return list(finalSet)
 
 
