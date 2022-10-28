@@ -35,26 +35,33 @@ CREATE TABLE IF NOT EXISTS GOODREADS (
             FOREIGN KEY(user_id) REFERENCES USERS(user_id)
 );  
 
--- CREATE TABLE IF NOT EXISTS GOODREADS_BOOKS (
---             new_id CHAR,
---             goodreads_id CHAR,
---             ISBN_10 CHAR,
---             ISBN_13 CHAR,
---             ASIN CHAR,
---             title CHAR,
---             author CHAR,
---             series CHAR,
---             issue VARCHAR,
---             summary CHAR,
---             goodreads_image_link CHAR,
---             genre CHAR,
---             pages INT,
---             format CHAR,
---             published_date CHAR,
---             language CHAR,
---             published_by CHAR,
---             edition CHAR,
---             image_link CHAR
--- )
+CREATE TABLE IF NOT EXISTS GOODREADS_BOOKS (
+            new_id CHAR,
+            goodreads_id CHAR,
+            ISBN_10 CHAR,
+            ISBN_13 CHAR,
+            ASIN CHAR,
+            title CHAR,
+            author CHAR,
+            series CHAR,
+            issue VARCHAR,
+            summary CHAR,
+            goodreads_image_link CHAR,
+            genre CHAR,
+            pages INT,
+            format CHAR,
+            published_date CHAR,
+            language CHAR,
+            published_by CHAR,
+            edition CHAR,
+            image_link CHAR
+);
+
+CREATE TABLE IF NOT EXISTS VERSIONS(
+            user_id VARCHAR(255),
+            version CHAR,
+            FOREIGN KEY(user_id) REFERENCES USERS(user_id)
+);
+
 
 PRAGMA foreign_keys = ON;

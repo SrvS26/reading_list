@@ -273,6 +273,8 @@ while True:
                         value = verifiedResponse(
                             response[0], userID, licenseKey, listRevoked
                         )
+                        tier = checkGoodreads(response[0])
+                        goodreadsEntry(tier)
                         error(pageID, value, userDetails, licenseKey)
                     else:
                         error(pageID, response[1], userDetails, licenseKey)

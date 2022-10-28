@@ -29,7 +29,7 @@ def get_goodreads_data(token):
 	}
 	response = requests.request("POST", url, json=payload, headers=headers)
 	if response.status_code !=200:
-		logging.error(f"Could not fetch databaseID for Goodreads database: {response.status_code}")
+		logging.error(f"Could not fetch databaseID for Imports database: {response.status_code}")
 		return
 	else:    
 		parsedResponse = response.json()
@@ -70,11 +70,11 @@ def get_goodreads_id(parsedResponse):
 				databaseTitle = (
 						(item.get("title", [{}])[0]).get("text", {}).get("content")
 					)
-				if databaseTitle == "Goodreads":
+				if databaseTitle == "Imports":
 					databaseDetails = item
 					break
 			if databaseDetails is None:
-				logging.error(f"Goodreads database not found")
+				logging.error(f"Imports database not found")
 				return None
 			else:
 				database_id = databaseDetails.get("id")
@@ -84,7 +84,11 @@ def get_goodreads_id(parsedResponse):
 			return None        
 
 
-def get_available_fields(parsedResponse):
+def get_available_fields(parsedResponse, version):
+	if version == "V1":
+		ourList = ourListV1
+	else:
+		ourList = ourListV2
 	allAvailableList = []
 	if parsedResponse is not None:
 		results = parsedResponse.get("results")
@@ -101,15 +105,19 @@ def get_available_fields(parsedResponse):
 					databaseDetails = item                   
 					requiredPropertiesGeneral = databaseDetails["properties"]    
 					for item in requiredPropertiesGeneral.keys():                       
-						if item in ourListV2:                                             
+						if item in ourList:                                             
 							allAvailableList.append(item)   
-							logging.info("All available fields to fill in BookShelf fetched")                                     
+					logging.info("All available fields to fill in BookShelf fetched")                                     
 	return allAvailableList     
 
 
-def missing_fields(allAvailableList):
-    finalSet = set(ourListV2) - set(allAvailableList)
-    return list(finalSet)
+def missing_fields(allAvailableList, version):
+	if version == "V1":
+		ourList = ourListV1
+	else:
+		ourList = ourListV2
+	finalSet = set(ourList) - set(allAvailableList)
+	return list(finalSet)
 
 
 def get_csvfile_results(databaseID, userID, token):
@@ -137,172 +145,27 @@ def get_csvfile_results(databaseID, userID, token):
 
 
 def get_csvfile(results):
-    finalResults = results[0]
-    urlDeets = finalResults.get("properties", {}).get("File",{}).get("files", [])
-    page_id = finalResults.get("id", None)
-    if len(urlDeets) != 0:
-        url = urlDeets[0].get("file", {}).get("url", None)
-        return url, page_id
-    else:
-        return None, None    
-
-def updateDatabaseOld(triggerDetails, databaseID, token, finalSet):
-	url = f'https://api.notion.com/v1/pages'
-	title = triggerDetails["Title"]
-	payload = {
-		"parent": {
-				"type": "database_id",
-				"database_id": f"{databaseID}"
-					},
-		"properties": {
-			"Title": {
-				"title": [
-					{
-					"text": {
-						"content": triggerDetails["Title"]
-						}
-					}
-				]
-			},
-			"Status": {
-				"type": "select",
-				"select": {
-					"name": triggerDetails["status"]
-				}
-			},
-			"Authors" : {
-				"multi_select" : triggerDetails["Authors"]
-			},
-			"Source": {
-				"type": "select",
-				"select": {
-					"name": "Goodreads"
-				}
-			},
-			"Rating": {
-				"type": "select",
-				"select": {
-					"name": "⭐" * int(triggerDetails["myRating"])
-				}
-			},
-			"Date Completed": {
-				"type": "date",
-				"date": {
-					"start": triggerDetails["Date Completed"]
-				}
-			},
-			"Date Added": {
-				"type": "date",
-				"date": {
-					"start": triggerDetails["Date Added"]
-				}
-			},
-			"ISBN_13": {
-				"type": "rich_text",
-				"rich_text": [
-						{
-						"type": "text",
-						"text": {
-							"content": triggerDetails["ISBN_13"]
-						},
-						"plain_text": triggerDetails["ISBN_13"]
-					}
-				]
-			},
-			"ISBN_10": {
-				"type": "rich_text",
-				"rich_text": [
-						{
-						"type": "text",
-						"text": {
-							"content": triggerDetails["ISBN_10"]
-						},
-						"plain_text": triggerDetails["ISBN_10"]
-					}
-				]
-			}
-		},
-		"children": [
-			{
-				"type": "heading_1",
-				"heading_1": {
-					"rich_text": [{
-						"type": "text",
-						"text": {
-							"content": "My Review"
-					}
-			}],
-				"color": "default",
-			}
-		},
-		{"type": "paragraph",
-		"paragraph": {
-			"rich_text": [{
-				"type": "text",
-				"text": {
-					"content": triggerDetails["myReview"]
-				}
-			}],
-			"color": "default"
-		}
-		},
-		{"type": "heading_1",
-			"heading_1": {
-				"rich_text": [{
-					"type": "text",
-					"text": {
-						"content": "My Notes"
-					}
-				}],
-				"color": "default",
-			}
-		},
-		{
-			"type": "paragraph",
-			"paragraph": {
-			"rich_text": [{
-				"type": "text",
-				"text": {
-					"content": triggerDetails["myNotes"]
-				}
-			}],
-				"color": "default"
-		}
-		}
-		],
-			"icon": {
-			"type": "external",
-			"external": {
-				"url": "https://www.notion.so/icons/book-closed_gray.svg"
-				}
-			}
-		}
-	headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Notion-Version": "2022-06-28",
-        "Authorization": f"Bearer {token}"
-	}
-	if triggerDetails["Date Added"] == "":
-		del payload["properties"]["Date Added"]
-	if triggerDetails["Date Completed"] == "":
-		del payload["properties"]["Date Completed"]	  
-	for item in finalSet:
-		del payload["properties"][item] 
-	if int(triggerDetails["myRating"]) == 0:
-		del payload["properties"]["Rating"]    
-	response = requests.request("POST", url, json=payload, headers=headers)
-	status = response.status_code
-	if status == 200:
-		logging.info(f"Page created for book {title}")
-		return status
+	if results is not None and len(results) != 0:
+		finalResults = results[0]
+		urlDeets = finalResults.get("properties", {}).get("File",{}).get("files", [])
+		page_id = finalResults.get("id", None)
+		if len(urlDeets) != 0:
+			url = urlDeets[0].get("file", {}).get("url", None)
+			return url, page_id
+		else:
+			return None, None    
 	else:
-		logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
-		return title
+		return None, None
 
-def updateDatabaseNew(triggerDetails, databaseID, token, finalSet, image_link):
+def updateDatabase(triggerDetails, databaseID, token, finalSet, image_link, version):
 	url = f'https://api.notion.com/v1/pages'
 	title = triggerDetails["Title"]
+	if version == "V1":
+		type = "select"
+	elif version == "V2":
+		type = "status"
+	else:
+		logging.error("No version details available")
 	payload = {
 		"cover" : {
 			"type": "external",
@@ -335,8 +198,8 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet, image_link):
             },
 			"Pages": {"number": triggerDetails["Pages"]},
 			"Status": {
-				"type": "status",
-				"status": {
+				"type": f"{type}",
+				f"{type}": {
 					"name": triggerDetails["status"]
 				}
 			},
@@ -463,16 +326,19 @@ def updateDatabaseNew(triggerDetails, databaseID, token, finalSet, image_link):
 	for item in finalSet:
 		del payload["properties"][item] 
 	if int(triggerDetails["myRating"]) == 0:
-		del payload["properties"]["Rating"]    
-	response = requests.request("POST", url, json=payload, headers=headers)
-	status = response.status_code
-	if status == 200:
-		logging.info(f"Page created for book {title}")
-		return status
-	else:
-		logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
-		return title  
-
+		del payload["properties"]["Rating"]
+	try:	    
+		response = requests.request("POST", url, json=payload, headers=headers)
+		status = response.status_code
+		if status == 200:
+			logging.info(f"Page created for book {title}")
+			return status
+		else:
+			logging.error(f"Page creation failed for book {title} with status code: {status} with message: {response.json()}")
+			return title
+	except Exception as e:
+		logging.error(f"Update failed: {e}")
+		return
 
 
 def status(user_id, access_token, page_id, num_books, count, books_not_added):

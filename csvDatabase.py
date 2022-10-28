@@ -332,9 +332,10 @@ while True:
         user_id = item.get("user_id")
         bookshelf_database_id = item.get("bookshelf_database_id")
         access_token = item.get("access_token")
+        version = item.get("version")
         goodreads_id_data = notion.goodreads.get_goodreads_data(access_token)
-        available_fields = notion.goodreads.get_available_fields(goodreads_id_data)
-        missing_fields = notion.goodreads.missing_fields(available_fields)
+        available_fields = notion.goodreads.get_available_fields(goodreads_id_data, version)
+        missing_fields = notion.goodreads.missing_fields(available_fields, version)
         goodreads_database_id = notion.goodreads.get_goodreads_id(goodreads_id_data)
         if goodreads_database_id is not None:
             item["goodreads_database_id"] = notion.goodreads.get_goodreads_id(goodreads_id_data)
@@ -349,13 +350,13 @@ while True:
                     for item in mapped_dic:
                         books_not_added=[]
                         book = scrape_goodreads.add_to_dic(item)
-                        # file = book["Image_url"]
                         image_link = image.upload_Image(conn, book)
-                        status = notion.goodreads.updateDatabaseNew(book, bookshelf_database_id, access_token, missing_fields, image_link)
+                        status = notion.goodreads.updateDatabase(book, bookshelf_database_id, access_token, missing_fields, image_link, version)
                         if status == 200:
                             count+=1
                         else:
-                            books_not_added.append(status)         
+                            books_not_added.append(status)
+                        goodreads.goodreads.update_goodreads_books(book, image_link)             
                     notion.goodreads.status(user_id, access_token, page_id, num_books, count, books_not_added)
                     goodreads.goodreads.update_goodreads(user_id, num_books, count)
 
