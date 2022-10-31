@@ -1,3 +1,4 @@
+from distutils.debug import DEBUG
 import requests
 import time
 from flask import Flask
@@ -13,6 +14,7 @@ import logging
 
 logging.basicConfig(
     filename="server.log",
+    level= logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
@@ -119,21 +121,22 @@ def getCode():
             return redirect(url_for("error", error=100))
         tokenDetails = userDetails.json()
         token = tokenDetails.get("access_token")
+        time.sleep(20)
         databaseIDurl = " https://api.notion.com/v1/search"
         params = {
             "filter": {"value": "database", "property": "object"},
             "query": "Bookshelf",
         }
         logging.info("Querying for database ID")
-        time.sleep(2)
         try:
             response = requests.post(
                 databaseIDurl,
                 headers={
+                    "Content-Type": "application/json",
                     "Notion-Version": "2022-02-22",
                     "Authorization": "Bearer " + token,
                 },
-                data=params,
+                json=params,
             )
             if response.status_code != 200:
                 logging.error(f"Notion database retrieval failed: {response.json()}")
@@ -141,6 +144,7 @@ def getCode():
         except Exception as e:
             logging.exception(f"Notion database retrieval exception: {e}")
         parsedResponse = response.json()
+        logging.info(f"{parsedResponse}")
         database_id = getDatabaseID(parsedResponse)
         if database_id is None:
             dbId = "-1"

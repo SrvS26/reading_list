@@ -11,9 +11,12 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourListV2 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
-ourListV1 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
+# ourListV2 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
+# ourListV1 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
 
+ourList = {"V1": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
+            "V2": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
+            "Other": None}
 
 def get_goodreads_data(token):
 	url = "https://api.notion.com/v1/search"
@@ -85,10 +88,7 @@ def get_goodreads_id(parsedResponse):
 
 
 def get_available_fields(parsedResponse, version):
-	if version == "V1":
-		ourList = ourListV1
-	else:
-		ourList = ourListV2
+	ourList = ourList[version]
 	allAvailableList = []
 	if parsedResponse is not None:
 		results = parsedResponse.get("results")
@@ -112,10 +112,7 @@ def get_available_fields(parsedResponse, version):
 
 
 def missing_fields(allAvailableList, version):
-	if version == "V1":
-		ourList = ourListV1
-	else:
-		ourList = ourListV2
+	ourList = ourList[version]
 	finalSet = set(ourList) - set(allAvailableList)
 	return list(finalSet)
 

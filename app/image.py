@@ -168,7 +168,7 @@ async def uploadImage(session, conn, ourDic):
         image_link = insertImage(conn, ourDic, finalTitle)
         return image_link
 
-def upload_Image(conn, ourDic):
+def upload_image(conn, ourDic):
     result = getImageDatabase(conn, ourDic)
     if result is not None:
         return result[0]

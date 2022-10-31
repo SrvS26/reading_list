@@ -32,6 +32,8 @@ def get_user_details(records):
         bookshelf_database_id = row[1]
         user_id = row[2]
         version = row[3]
+        if version != "V1" and version != "V2":
+            version = "Other"    
         dicDeets["access_token"] = access_token
         dicDeets ["bookshelf_database_id"] = bookshelf_database_id
         dicDeets ["user_id"] = user_id 
@@ -56,12 +58,13 @@ def update_goodreads_id(database_id, user_id):
 
 def update_goodreads(user_id, num_books, count):
     num_books_not_added = num_books - count
+    books = (num_books, num_books_not_added, 1, user_id)
     conn = sqlite3.connect(databaseFile)
     logging.debug(f"Connected to database file '{databaseFile}'")
     cursor_object = conn.cursor()
-    data = f"UPDATE GOODREADS SET num_books = '{num_books}', num_books_unfilled = '{num_books_not_added}', is_processed = 1 WHERE user_id = '{user_id}'" 
+    data = f"UPDATE GOODREADS SET num_books = ?, num_books_unfilled = ?, is_processed = ? WHERE user_id = ?" 
     try:
-        cursor_object.execute(data)
+        cursor_object.execute(data, books)
         logging.info(f"Inserted ID into table for user {user_id}")
         conn.commit()
     except Exception as e:

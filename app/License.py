@@ -204,20 +204,16 @@ def verifiedResponse(response, userId, licenseKey, listRevoked):
         return 104
 
 
-def checkGoodreads(response, userID):
+def getGumroadVariant(response):
     purchasedTier = response.get("variants")
-    tier = {}
-    tier["variant"] = purchasedTier
-    tier["user_id"] = userID
-    return tier
+    return purchasedTier == "(Autofill with Goodreads Import)" 
 
-def goodreadsEntry(tier):
+def goodreadsEntry(userID):
     conn = sqlite3.connect(databaseFile)
     cursor_object = conn.cursor()
-    if tier["variant"] == "(Autofill with Goodreads Import)":
-        data = f"""INSERT INTO GOODREADS ('user_id') VALUES ('{tier['user_id']}')"""
-        cursor_object.execute(data)
-        conn.commit()
+    data = f"""INSERT INTO GOODREADS ('user_id') VALUES (?)"""
+    cursor_object.execute(data, userID)
+    conn.commit()
     cursor_object.close()
     return
 
@@ -273,8 +269,8 @@ while True:
                         value = verifiedResponse(
                             response[0], userID, licenseKey, listRevoked
                         )
-                        tier = checkGoodreads(response[0])
-                        goodreadsEntry(tier)
+                        if getGumroadVariant(response[0]) == True:
+                            goodreadsEntry(userID)
                         error(pageID, value, userDetails, licenseKey)
                     else:
                         error(pageID, response[1], userDetails, licenseKey)
