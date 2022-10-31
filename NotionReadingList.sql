@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS GOODREADS (
 );  
 
 CREATE TABLE IF NOT EXISTS GOODREADS_BOOKS (
-            new_id CHAR,
             goodreads_id CHAR,
             ISBN_10 CHAR,
             ISBN_13 CHAR,
