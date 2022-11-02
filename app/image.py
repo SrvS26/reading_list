@@ -3,14 +3,14 @@ from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 from decouple import config
 import os
 from uuid import uuid4
-# import custom_logger
+import custom_logger
 import requests
 
 databaseFile = config("DATABASE_FILE_PATH")
 url = config("BASE_URL")
 imageFolder = config("IMAGE_PATH")
 
-# logging, listener = custom_logger.get_logger("image")
+logging, listener = custom_logger.get_logger("image")
 
 
 def getImageDatabase(conn, ourDic):
@@ -42,26 +42,26 @@ async def getImage(session, ourDic, finalTitle):
     if imageLink != "":
         r = await session.get(imageLink)
         x = await r.read()
-        # logging.info(f"Querying for book {finalTitle} cover")
+        logging.info(f"Querying for book {finalTitle} cover")
         with open(finalTitle, "wb") as f:
             f.write(x)
         return finalTitle
     else:
-        # logging.info(f"Book {title} has no image")
+        logging.info(f"Book {title} has no image")
         return "NI.jpg"
 
-def get_Image(ourDic, finalTitle):
+def get_image(ourDic, finalTitle):
     title = ourDic["Title"]
     imageLink = ourDic["Image_url"]
     if imageLink != "":
         r = requests.get(imageLink)
         # x = r.read()
-        # logging.info(f"Querying for book {finalTitle} cover")
+        logging.info(f"Querying for book {finalTitle} cover")
         with open(finalTitle, "wb") as f:
             f.write(r.content)
         return finalTitle
     else:
-        # logging.info(f"Book {title} has no image")
+        logging.info(f"Book {title} has no image")
         return "NI.jpg"
 
 def resize_goodreads_image(title):
@@ -144,7 +144,7 @@ def finalImage(file, finaltitle):
     with Image(filename=shadowBackground) as img:
         img.composite(Image(filename=rightSize), gravity="center")
         img.save(filename=f"{imageFolder}/{finaltitle}.jpg")
-    # logging.info("Book cover image created")
+    logging.info("Book cover image created")
     if file != "NI.jpg":
         os.remove(file)
     return finaltitle
@@ -162,7 +162,7 @@ async def uploadImage(session, conn, ourDic):
         )
         finalTitle = "".join(filter(lambda x: x.isalnum(), title))
         if finalTitle == "":
-            finalTitle = uuid4()
+            finalTitle = str(uuid4())
         file = await getImage(session, ourDic, finalTitle)
         finalImage(file, finalTitle)
         image_link = insertImage(conn, ourDic, finalTitle)
@@ -181,7 +181,7 @@ def upload_image(conn, ourDic):
         finalTitle = "".join(filter(lambda x: x.isalnum(), title))
         if finalTitle == "":
             finalTitle = str(uuid4())
-        file = get_Image(ourDic, finalTitle)
+        file = get_image(ourDic, finalTitle)
         rightSize = resize_goodreads_image(file)
         imageColour = getsRGB(file)
         background = createBackground(imageColour)
@@ -189,7 +189,7 @@ def upload_image(conn, ourDic):
         with Image(filename=shadowBackground) as img:
             img.composite(Image(filename=rightSize), gravity="center")
             img.save(filename=f"{imageFolder}/{finalTitle}.jpg")
-    # logging.info("Book cover image created")
+        logging.info("Book cover image created")
         if file != "NI.jpg":
             os.remove(file)
         image_link = insertImage(conn, ourDic, finalTitle)

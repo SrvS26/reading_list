@@ -121,7 +121,7 @@ def getCode():
             return redirect(url_for("error", error=100))
         tokenDetails = userDetails.json()
         token = tokenDetails.get("access_token")
-        time.sleep(20)
+        time.sleep(2)
         databaseIDurl = " https://api.notion.com/v1/search"
         params = {
             "filter": {"value": "database", "property": "object"},
@@ -144,7 +144,6 @@ def getCode():
         except Exception as e:
             logging.exception(f"Notion database retrieval exception: {e}")
         parsedResponse = response.json()
-        logging.info(f"{parsedResponse}")
         database_id = getDatabaseID(parsedResponse)
         if database_id is None:
             dbId = "-1"
