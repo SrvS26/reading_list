@@ -3,7 +3,7 @@ from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 from decouple import config
 import os
 from uuid import uuid4
-import custom_logger
+from app import custom_logger
 import requests
 
 databaseFile = config("DATABASE_FILE_PATH")

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS IMAGES (
 
 CREATE TABLE IF NOT EXISTS GOODREADS (
             database_id VARCHAR(255),
-            user_id VARCHAR(255),
+            user_id VARCHAR(255) NOT NULL PRIMARY KEY,
             num_books INT,
             num_books_unfilled INT,
             goodreads_status VARCHAR (255),
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS GOODREADS (
 );  
 
 CREATE TABLE IF NOT EXISTS GOODREADS_BOOKS (
-            goodreads_id CHAR,
+            goodreads_id CHAR PRIMARY KEY,
             ISBN_10 CHAR,
             ISBN_13 CHAR,
             ASIN CHAR,

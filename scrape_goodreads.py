@@ -25,42 +25,6 @@ base_url = "https://www.goodreads.com/book/show/"
 def get_book_details_users(goodreads_id, user_agent):
     url = f"{base_url}{goodreads_id}"
     headers = {"User-Agent": user_agent}
-    # img_deets = None
-    # count = 0
-    # while img_deets is None or len(img_deets) == 0 and count < 10:
-    #     try:
-    #         r = requests.get(url, headers=headers)
-    #         html_doc = r.content
-    #         soup = BeautifulSoup(html_doc, "html.parser") 
-    #         img_deets = soup.find_all("img", id="coverImage")[0]["src"]
-    #         count += 1
-    #         with open(f"test.html", "w") as file:
-    #             file.write(soup.prettify())
-    #         time.sleep(1)
-    #     except Exception as e:
-    #         count += 1     
-    # summary_deets = soup.find_all("div", id="descriptionContainer")
-    # summary = ""
-    # if summary_deets is not None and len(summary_deets) != 0: 
-    #     get_summary = summary_deets[0].find_all("span", style="display:none")
-    #     if get_summary is not None and len(get_summary) != 0:
-    #         final_summary = get_summary[0]
-    #         for string in final_summary.strings:
-    #             summary = summary + string        
-    # categories = []
-    # category_deets = soup.find_all("div", class_="bigBoxBody")
-    # if category_deets is not None and len(category_deets) != 0:
-    #     for item in category_deets:
-    #         category_list = item.find_all("div", class_="elementList")
-    #         if len(category_list) != 0 and category_list is not None:
-    #             for c in category_list:
-    #                 category = c.find("div", class_="left")
-    #                 if category is not None:
-    #                     dic_final_category = {}
-    #                     final_category = category.find("a").string
-    #                     if final_category is not None:    
-    #                         dic_final_category["name"] = final_category 
-    #                         categories.append(dic_final_category)
     try:
         r = requests.get(url, headers=headers)
         html_doc = r.content
@@ -89,18 +53,25 @@ def get_book_details_users(goodreads_id, user_agent):
                                 dic_final_category["name"] = final_category 
                                 categories.append(dic_final_category)
     except IndexError:
-        img_deets = soup.find_all("div", class_="BookCover__image")[0].find("img", class_="ResponsiveImage")["src"]
-        summary = ''
-        almost_summary = (soup.find_all("div", class_="BookPageMetadataSection__description")[0].find("span", class_="Formatted"))
-        for string in almost_summary.strings:
-            summary = summary + string
-        categories = []
-        all_categories = soup.find("div", class_="BookPageMetadataSection__genres").find_all("span", class_="BookPageMetadataSection__genreButton")
-        for item in all_categories:
-            dic = {}
-            category = item.find("span", class_="Button__labelItem").string
-            dic["name"] = category
-            categories.append(dic)
+        try:
+            img_deets = soup.find_all("div", class_="BookCover__image")[0].find("img", class_="ResponsiveImage")["src"]
+            summary = ''
+            almost_summary = (soup.find_all("div", class_="BookPageMetadataSection__description")[0].find("span", class_="Formatted"))
+            for string in almost_summary.strings:
+                summary = summary + string
+            categories = []
+            all_categories = soup.find("div", class_="BookPageMetadataSection__genres").find_all("span", class_="BookPageMetadataSection__genreButton")
+            for item in all_categories:
+                dic = {}
+                category = item.find("span", class_="Button__labelItem").string
+                dic["name"] = category
+                categories.append(dic)
+        except IndexError:
+            logging.error(f"Failed to extract data from soup ?different html result")
+            # f = open("test.html", "w")
+            # f.write(str(soup.prettify))
+            # f.close
+            return
     except Exception as e:
         logging.error (f"Failed to extract data from soup: {e}")
         return                              
@@ -109,14 +80,21 @@ def get_book_details_users(goodreads_id, user_agent):
 
        
 def add_to_dic(myDic):
-    image_link, summary, categories = get_book_details_users(myDic["goodreadsID"], user_agent())
-    myDic["Image_url"] = image_link
-    if len(summary)> 2000:
-        summary = summary[:1997] + "..."
-        summaryExtd = summary[1998:]
-        myDic["SummaryExtd"] = summaryExtd
+    count = 0
+    while get_book_details_users(myDic["goodreadsID"], user_agent()) is None or count < 3:
+        count += 1
+    if get_book_details_users is not None:    
+        image_link, summary, categories = get_book_details_users(myDic["goodreadsID"], user_agent())
+        myDic["Image_url"] = image_link
+        if len(summary)> 2000:
+            summary = summary[:1997] + "..."
+            summaryExtd = summary[1998:]
+            myDic["SummaryExtd"] = summaryExtd
+        else:
+            myDic["SummaryExtd"] = ""    
+        myDic["Summary"] = summary
+        myDic["Categories"] = categories
+        return myDic
     else:
-        myDic["SummaryExtd"] = ""    
-    myDic["Summary"] = summary
-    myDic["Categories"] = categories
-    return myDic
+        return
+

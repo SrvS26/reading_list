@@ -11,12 +11,9 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-# ourListV2 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
-# ourListV1 = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
-
 ourList = {"V1": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
             "V2": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
-            "Other": None}
+            "Unknown": None}
 
 def get_goodreads_data(token):
 	url = "https://api.notion.com/v1/search"
@@ -37,32 +34,6 @@ def get_goodreads_data(token):
 	else:    
 		parsedResponse = response.json()
 		return parsedResponse
-
-    # databaseIDurl = "https://api.notion.com/v1/search"
-    # params = {
-	# "filter" : {
-	# 	"value" : "database",
-	# 	"property" : "object"
-	# 			}
-	# 		}
-    # try:
-    #     response = requests.post(
-    #         databaseIDurl,
-    #         headers={
-    #             "Notion-Version": "2022-06-28",
-    #                 "Authorization": "Bearer " + token,
-	# 				"Content-Type": "application/json"
-    #             },
-    #             data=params
-    #         )
-    #     if response.status_code !=200:
-    #         logging.error(f"Could not fetch databaseID for Goodreads database: {response.status_code}")
-    #         return
-    #     else:    
-    #         parsedResponse = response.json()
-    #         return parsedResponse
-    # except Exception as e:
-    #     return
 
 def get_goodreads_id(parsedResponse):
 	if parsedResponse is not None:
@@ -88,7 +59,7 @@ def get_goodreads_id(parsedResponse):
 
 
 def get_available_fields(parsedResponse, version):
-	ourList = ourList[version]
+	property_list = ourList[version]
 	allAvailableList = []
 	if parsedResponse is not None:
 		results = parsedResponse.get("results")
@@ -105,15 +76,15 @@ def get_available_fields(parsedResponse, version):
 					databaseDetails = item                   
 					requiredPropertiesGeneral = databaseDetails["properties"]    
 					for item in requiredPropertiesGeneral.keys():                       
-						if item in ourList:                                             
+						if item in property_list:                                             
 							allAvailableList.append(item)   
 					logging.info("All available fields to fill in BookShelf fetched")                                     
 	return allAvailableList     
 
 
 def missing_fields(allAvailableList, version):
-	ourList = ourList[version]
-	finalSet = set(ourList) - set(allAvailableList)
+	property_list = ourList[version]
+	finalSet = set(property_list) - set(allAvailableList)
 	return list(finalSet)
 
 

@@ -31,9 +31,7 @@ def get_user_details(records):
         access_token = row[0]
         bookshelf_database_id = row[1]
         user_id = row[2]
-        version = row[3]
-        if version != "V1" and version != "V2":
-            version = "Other"    
+        version = row[3]    
         dicDeets["access_token"] = access_token
         dicDeets ["bookshelf_database_id"] = bookshelf_database_id
         dicDeets ["user_id"] = user_id 

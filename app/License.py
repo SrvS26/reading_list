@@ -8,6 +8,7 @@ import time
 logging.basicConfig(
     filename="license.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
+    level=logging.DEBUG,
     datefmt="%d-%b-%y %H:%M:%S",
 )
 databaseFile = config("DATABASE_FILE_PATH")
@@ -33,6 +34,7 @@ def fetchToken():
     except Exception as e:
         logging.exception(f"Could not fetch tokens from Users: {e}")
     listTokens = []
+    logging.info(f"Fetched {len(listTokens)} number of tokens from USERS table")
     if len(records) > 0:
         for item in records:
             user_details = {}
@@ -62,6 +64,7 @@ def updateValidated(userId):
     data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0 WHERE user_id = '{userId}'"""
     try:
         cursor.execute(data)
+        logging.info("Validation added to table")
     except Exception as e:
         logging.exception(f"Could not update is_validated for {userId}: {e}")
     conn.commit()
@@ -75,6 +78,7 @@ def addLicenseKey(userId, licenseKey):
     )
     try:
         cursor.execute(data)
+        logging.info("Added license key to table USERS")
     except Exception as e:
         logging.exception(f"Could not update license_key for {userId}: {e}")
     conn.commit()
@@ -101,6 +105,7 @@ def fetchID(userDetails):
         )
         statusCode = response.status_code
         if statusCode == 200:
+            logging.info("Successfully queried for License key database")
             parsedResponse = response.json()
             database = parsedResponse.get("results", [])
             if len(database) > 0:
@@ -145,7 +150,7 @@ def fetchLicenseKey(databaseID, userDetails):
                     )
                 if len(licenseList) != 0:
                     recLicenseKey = licenseList[0].get("plain_text", None)
-                    logging.warning(f"Received license key: {recLicenseKey} for user: {userID}")
+                    logging.info(f"Received license key: {recLicenseKey} for user: {userID}")
                         # if licenseKey[-1] == ";":
                     altLicenseKey = recLicenseKey[:-1]
                     licenseKey = ''.join(altLicenseKey.splitlines())
@@ -171,6 +176,7 @@ def verifyLicenseKey(licenseKey, userDetails):
         verify = requests.post(url, headers={}, data=params)
         statusCode = verify.status_code
         if statusCode == 200:
+            logging.info("Successfully queried gumroad for license code verification")
             parsed = verify.json()
             return (parsed, 100)
         else:
@@ -185,6 +191,7 @@ def verifyLicenseKey(licenseKey, userDetails):
 
 def verifiedResponse(response, userId, licenseKey, listRevoked):
     if response.get("success") == True:
+        logging.info("License key successfully validated")
         numUses = response.get("uses", None)
         if numUses == 1:
             updateValidated(userId)
@@ -205,14 +212,15 @@ def verifiedResponse(response, userId, licenseKey, listRevoked):
 
 
 def getGumroadVariant(response):
-    purchasedTier = response.get("variants")
-    return purchasedTier == "(Autofill with Goodreads Import)" 
+    purchasedTier = response.get("purchase").get("variants")
+    return purchasedTier == "(Auto-fill Feature with Goodreads Import)" 
 
 def goodreadsEntry(userID):
     conn = sqlite3.connect(databaseFile)
     cursor_object = conn.cursor()
-    data = f"""INSERT INTO GOODREADS ('user_id') VALUES (?)"""
-    cursor_object.execute(data, userID)
+    data = f"""INSERT INTO GOODREADS (user_id) VALUES ('{userID}')"""
+    cursor_object.execute(data)
+    logging.info("Updated Goodreads table")
     conn.commit()
     cursor_object.close()
     return
@@ -270,6 +278,7 @@ while True:
                             response[0], userID, licenseKey, listRevoked
                         )
                         if getGumroadVariant(response[0]) == True:
+                            logging.info("Goodreads import with autofill purchased")
                             goodreadsEntry(userID)
                         error(pageID, value, userDetails, licenseKey)
                     else:
