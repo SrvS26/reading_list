@@ -26,14 +26,6 @@ def map_csv_to_notion_fields(listDictCSV):
     bookDetails = []
     for item in listDictCSV:
         myDic = {}
-        # image_link, summary, categories = scrape_goodreads.get_book_details(item["Book Id"], scrape_goodreads.user_agent())
-        # myDic["Image_url"] = image_link
-        # if len(summary)> 2000:
-        #     summary = summary[:1997] + "..."
-        #     summaryExtd = summary[1998:]
-        #     myDic["summaryExtd"] = summaryExtd
-        # myDic["summary"] = summary
-        # myDic["categories"] = categories
         myDic["goodreadsID"] = item.get("Book Id", "")
         authorsList = []
         author = {}
@@ -80,17 +72,19 @@ def map_csv_to_notion_fields(listDictCSV):
         bookDetails.append(myDic)
     return bookDetails
 
-
-
-# def addtrigger(bookDetails):
-#     count = 0
-#     triggerDetails = []
-#     for item in bookDetails:
-#         if item["ISBN_13"] != "":
-#             item["ISBN_13"] = item["ISBN_13"] + ";"
-#         elif item["ISBN_10"] != "":
-#             item["ISBN_10"] = item["ISBN_10"] + ";"
-#         else:
-#             count += 1            
-#         triggerDetails.append(item)
-#     return triggerDetails, count        
+def divide_into_sets(listCSV):
+    book_list = []
+    mapped_list = map_csv_to_notion_fields(listCSV)
+    num_in_set = 25
+    quo = int((len(mapped_list))/num_in_set)
+    mod = (len(mapped_list))%num_in_set
+    for i in range(quo):
+        start = i * num_in_set
+        end = start + num_in_set
+        one_set = mapped_list[start:end]
+        book_list.append(one_set)
+    if mod != 0:
+        start = quo * num_in_set
+        last_set = mapped_list[start:]
+        book_list.append(last_set)
+    return book_list         

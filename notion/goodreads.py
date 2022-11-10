@@ -11,9 +11,7 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
-ourList = {"V1": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
-            "V2": ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Dates", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"],
-            "Unknown": None}
+ourList = ["Title", "ISBN_10", "ISBN_13", "Rating", "Status", "Source", "Date Completed", "Date Started", "Authors", "Summary", "Summary_extd", "Category", "Pages", "Publisher", "Source", "Date Added", "Rating"]
 
 def get_goodreads_data(token):
 	url = "https://api.notion.com/v1/search"
@@ -58,8 +56,7 @@ def get_goodreads_id(parsedResponse):
 			return None        
 
 
-def get_available_fields(parsedResponse, version):
-	property_list = ourList[version]
+def get_available_fields(parsedResponse):
 	allAvailableList = []
 	if parsedResponse is not None:
 		results = parsedResponse.get("results")
@@ -76,15 +73,14 @@ def get_available_fields(parsedResponse, version):
 					databaseDetails = item                   
 					requiredPropertiesGeneral = databaseDetails["properties"]    
 					for item in requiredPropertiesGeneral.keys():                       
-						if item in property_list:                                             
+						if item in ourList:                                             
 							allAvailableList.append(item)   
 					logging.info("All available fields to fill in BookShelf fetched")                                     
 	return allAvailableList     
 
 
-def missing_fields(allAvailableList, version):
-	property_list = ourList[version]
-	finalSet = set(property_list) - set(allAvailableList)
+def missing_fields(allAvailableList):
+	finalSet = set(ourList) - set(allAvailableList)
 	return list(finalSet)
 
 
@@ -289,7 +285,7 @@ def updateDatabase(triggerDetails, databaseID, token, finalSet, image_link, vers
     }
 	if triggerDetails["Date Added"] == "":
 		del payload["properties"]["Date Added"]
-	if triggerDetails["Date Completed"] == "":
+	if triggerDetails["Date Completed"] == "" or version == "V1":
 		del payload["properties"]["Dates"]	  
 	for item in finalSet:
 		del payload["properties"][item] 
@@ -306,7 +302,7 @@ def updateDatabase(triggerDetails, databaseID, token, finalSet, image_link, vers
 			return title
 	except Exception as e:
 		logging.error(f"Update failed: {e}")
-		return
+		return title
 
 
 def status(user_id, access_token, page_id, num_books, count, books_not_added):
