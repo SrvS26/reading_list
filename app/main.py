@@ -2,54 +2,52 @@ import asyncio
 import copy
 import time
 from decouple import config
-import googlebooks
-import usersDatabase
-import image
+import books
+import database
+import book_cover
 import notion
 from aiohttp import ClientSession
 import custom_logger
 
-ourList = [
+notion_props_list = [
     "Title",
-    "Publisher",
     "Authors",
-    "Summary",
     "Category",
-    "Published",
-    "ISBN_10",
     "Pages",
+    "ISBN_10",
     "ISBN_13",
-    "Summary_extd",
     "Other Identifier",
+    "Summary",
+    "Summary_extd",
+    "Published",
+    "Publisher",
 ]
 
-ourDic = {
+notion_props_dict = {
     "Title": "",
     "Subtitle": "",
-    "Publisher": "",
     "Authors": "",
+    "Category": "",
+    "Pages": None,
+    "ISBN_10": "",
+    "ISBN_13": "",
+    "Other Identifier": "",
     "Summary": "",
     "Summary_extd": "",
-    "Category": "",
     "Published": "",
-    "ISBN_10": "",
-    "Pages": None,
-    "ISBN_13": "",
+    "Publisher": "",
     "Image_url": "",
-    "Other Identifier": "",
 }
 
-databaseFile = config("DATABASE_FILE_PATH")
+database = config("DATABASE_FILE_PATH")
 
-imageFolder = config("IMAGE_PATH")
+image = config("IMAGE_PATH")
 
-google_api_key = config("GOOGLE_API_KEY")
+api_key = config("BOOK_API_KEY")
 
-url = config("BASE_URL")
+logging, listener = custom_logger.get_logger("main")
 
-logging, listener = custom_logger.get_logger("ReadingList")
-
-conn = usersDatabase.connectDatabase(databaseFile)
+conn = database.connect_database(database)
 
 
 # { user_id: String
@@ -62,7 +60,7 @@ conn = usersDatabase.connectDatabase(databaseFile)
 # }
 
 
-async def get_added_books_from_notion(session, user_info={}):
+async def get_new_identifiers(session, user_info = {}):
     user_info_updated = await notion.requiredPageDetails(session, user_info)
     if user_info_updated["new_books_added"] is not None:
         user_info_updated["new_book_identifiers"] = notion.getNewTitlesOrISBN(
@@ -86,16 +84,16 @@ def flatten_user_books(user_info_updated):
     return user_info_list
 
 
-async def get_google_book_details(session, conn, user_info_with_identifiers):
-    user_info_with_googlebooks = await googlebooks.getBookDetails(
+async def get_book_details(session, conn, user_info_with_identifiers):
+    user_info_with_googlebooks = await books.get_book_details(
         session, user_info_with_identifiers
     )
-    if user_info_with_googlebooks["google_book_details"] is not None:
-        mapped_google_to_notion = googlebooks.mapOneDicToAnother(
-            copy.deepcopy(ourDic), user_info_with_googlebooks["google_book_details"]
+    if user_info_with_googlebooks["fetched_book_details"] is not None:
+        mapped_google_to_notion = books.mapOneDicToAnother(
+            copy.deepcopy(notion_props_dict), user_info_with_googlebooks["fetched_book_details"]
         )
         user_info_with_googlebooks["google_book_details"] = mapped_google_to_notion
-        user_info_with_googlebooks["image_file_path"] = await image.uploadImage(
+        user_info_with_googlebooks["image_file_path"] = await book_cover.uploadImage(
             session, conn, mapped_google_to_notion
         )
     return user_info_with_googlebooks
@@ -110,17 +108,17 @@ async def update_notion_with_bookdetails(session, user_info_with_googlebooks):
         user_info_end = copy.deepcopy(user_info_with_googlebooks)
     if user_info_end["is_revoked"]:
         listRevoked = list(filter(lambda x: x["is_revoked"], user_info_end))
-        usersDatabase.removeFromUsers(listRevoked, conn)
+        database.removeFromUsers(listRevoked, conn)
     return None
 
 
 async def run_main():
-    all_users = usersDatabase.getRecords(conn)
-    validated_users_info = usersDatabase.getValidatedTokens(all_users)
+    all_users = database.getRecords(conn)
+    validated_users_info = database.validated_users(all_users)
     async with ClientSession(trust_env=True) as session:
         user_info_updated = await asyncio.gather(
             *[
-                get_added_books_from_notion(session, user_info)
+                get_new_identifiers(session, user_info)
                 for user_info in validated_users_info
             ]
         )
@@ -132,7 +130,7 @@ async def run_main():
     async with ClientSession(trust_env=True) as session:
         user_info_with_googlebooks = await asyncio.gather(
             *[
-                get_google_book_details(session, conn, user_info_with_identifiers)
+                get_book_details(session, conn, user_info_with_identifiers)
                 for user_info_with_identifiers in user_info_list
             ]
         )

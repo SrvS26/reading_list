@@ -4,47 +4,57 @@ from decouple import config
 import requests
 import logging
 import time
+from app import notion
+
 
 logging.basicConfig(
-    filename="license.log",
+    filename="license_key.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     level=logging.DEBUG,
     datefmt="%d-%b-%y %H:%M:%S",
 )
-databaseFile = config("DATABASE_FILE_PATH")
-gumroadToken = config("GUMROAD_TOKEN")
-gumroadProductId = config("GUMROAD_PRODUCT_ID")
-errors = {
+
+database_file_path = config("DATABASE_FILE_PATH")
+gumroad_token = config("GUMROAD_TOKEN")
+gumroad_product_id = config("GUMROAD_PRODUCT_ID")
+
+outcomes = {
     100: "Success",
     101: "The license key is already in use",
     102: "Invalid license key",
     103: "Your access has been reinstated",
     104: "An error occurred. Please try again later",
 }
-conn = sqlite3.connect(databaseFile)
+
+conn = sqlite3.connect(database_file_path)
 
 
-# fetchToken :: () -> [{"user_id"::str, "access_token"::str}]
-def fetchToken():
+def new_user_details() -> list:
+    """
+    Fetches the user ID and access token for new users from the USERS database to validate license.
+    :returns: [{user_id: str, access_token: str}]
+    """
     cursor = conn.cursor()
     data = """SELECT access_token, user_id FROM USERS WHERE is_validated = 0 and database_id != '-1'"""
     try:
         cursor.execute(data)
         records = cursor.fetchall()
     except Exception as e:
-        logging.exception(f"Could not fetch tokens from Users: {e}")
-    listTokens = []
-    logging.info(f"Fetched {len(listTokens)} number of tokens from USERS table")
+        logging.exception(f"Could not fetch new user access tokens from USERS: {e}")
+    new_users = []
+    logging.info(f"Fetched {len(new_users)} number of tokens from USERS")
     if len(records) > 0:
         for item in records:
-            user_details = {}
-            user_details["access_token"] = item[0]
-            user_details["user_id"] = item[1]
-            listTokens.append(user_details)
-    return listTokens
+            user_details = {"access_token": item[0], "user_id": item[1]}
+            new_users.append(user_details)
+    return new_users
 
 
-def getRevoked():
+def revoked_access() -> list:
+    """
+    Fetches the user ID for users that have revoked our access to their Notion workspace or deleted the My Bookshelf page.
+    :returns: [{user_id: str}]
+    """
     cursor = conn.cursor()
     data = """SELECT user_id FROM USERS WHERE is_revoked = 1"""
     try:
@@ -52,39 +62,29 @@ def getRevoked():
         records = cursor.fetchall()
     except Exception as e:
         logging.exception(f"Could not fetch is_revoked from Users: {e}")
-    listRevoked = []
+    revoked_users = []
     if len(records) > 0:
         for item in records:
-            listRevoked.append(item[0])
-    return listRevoked
+            revoked_users.append(item[0])
+    return revoked_users
 
 
-def updateValidated(userId):
+def update_validated_status(user_id: str, license_key: str):
+    """
+    Updates the license key validated status and the license key in the USERS database.
+    """
     cursor = conn.cursor()
-    data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0 WHERE user_id = '{userId}'"""
+    data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0, license_key = '{license_key}' WHERE user_id = '{user_id}'"""
     try:
         cursor.execute(data)
-        logging.info("Validation added to table")
+        logging.info("User status updated as validated")
     except Exception as e:
-        logging.exception(f"Could not update is_validated for {userId}: {e}")
+        logging.exception(f"Could not update validated status for {user_id}: {e}")
     conn.commit()
     return
 
 
-def addLicenseKey(userId, licenseKey):
-    cursor = conn.cursor()
-    data = (
-        f"""UPDATE USERS SET license_key = '{licenseKey}' WHERE user_id = '{userId}'"""
-    )
-    try:
-        cursor.execute(data)
-        logging.info("Added license key to table USERS")
-    except Exception as e:
-        logging.exception(f"Could not update license_key for {userId}: {e}")
-    conn.commit()
-    return
-
-
+# this is supposed to do the same exact thing that one of the other functions is doing to fetch the database ID, why not simply use that function?
 def fetchID(userDetails):
     token = userDetails["access_token"]
     userID = userDetails["user_id"]
@@ -124,6 +124,8 @@ def fetchID(userDetails):
         logging.exception(f"Query for databaseID and userID failed: {e}")
         return (None, None)
 
+
+# This functions also, does the same as the other one, just for a different database, see if they can be clubbed into one.
 def fetchLicenseKey(databaseID, userDetails):
     token = userDetails["access_token"]
     userID = userDetails["user_id"]
@@ -168,69 +170,22 @@ def fetchLicenseKey(databaseID, userDetails):
         return None, None
 
 
-def verifyLicenseKey(licenseKey, userDetails):
-    userID = userDetails["user_id"]
-    url = "https://api.gumroad.com/v2/licenses/verify"
-    params = {"product_permalink": gumroadProductId, "license_key": licenseKey.strip()}
-    try:
-        verify = requests.post(url, headers={}, data=params)
-        statusCode = verify.status_code
-        if statusCode == 200:
-            logging.info("Successfully queried gumroad for license code verification")
-            parsed = verify.json()
-            return (parsed, 100)
-        else:
-            logging.error(
-                f"Gumroad license key query failed for user: {userID}, status code: {statusCode}, license key: {licenseKey}, response: {verify.text}"
-            )
-            return (None, 102)
-    except Exception as e:
-        logging.error(f"Gumroad license key query failed for user: {userID}, {e}")
-        return (None, 104)
-
-
-def verifiedResponse(response, userId, licenseKey, listRevoked):
-    if response.get("success") == True:
-        logging.info("License key successfully validated")
-        numUses = response.get("uses", None)
-        if numUses == 1:
-            updateValidated(userId)
-            addLicenseKey(userId, licenseKey)
-            return 100
-        elif numUses > 1:
-            if userId in listRevoked:
-                updateValidated(userId)
-                addLicenseKey(userId, licenseKey)
-                return 103
-            else:
-                return 101
-        elif numUses is None:
-            logging.error("No key 'uses' found")
-            return 104
-    else:
-        return 104
-
-
-def getGumroadVariant(response):
-    purchasedTier = response.get("purchase").get("variants")
-    return purchasedTier == "(Auto-fill Feature with Goodreads Import)" 
-
-def goodreadsEntry(userID):
-    conn = sqlite3.connect(databaseFile)
+def purchased_goodreads(user_id):
     cursor_object = conn.cursor()
-    data = f"""INSERT INTO GOODREADS (user_id) VALUES ('{userID}')"""
+    data = f"""INSERT INTO GOODREADS (user_id) VALUES ('{user_id}')"""
     cursor_object.execute(data)
-    logging.info("Updated Goodreads table")
+    logging.info("Updated GOODREADS table with user details")
     conn.commit()
     cursor_object.close()
     return
 
 
+# this can be done in the notion.py file. one function for all.
 def error(pageID, value, userDetails, licenseKey):
     token = userDetails["access_token"]
     userID = userDetails["user_id"]
     url = f"https://api.notion.com/v1/pages/{pageID}"
-    message = errors[value]
+    message = outcomes[value]
     if value == 102:
         message = message + ": " + licenseKey
     payload = {
@@ -263,11 +218,12 @@ def error(pageID, value, userDetails, licenseKey):
 
 
 while True:
-    listRevoked = getRevoked()
-    listTokens = fetchToken()
+    listRevoked = revoked_access()
+    listTokens = new_user_details()
     for userDetails in listTokens:
         try:
             userID = userDetails["user_id"]
+            database_id = notion.notion_search_id("database", "License Key", userDetails)
             databaseID, userID = fetchID(userDetails)
             if databaseID is not None:
                 licenseKey, pageID = fetchLicenseKey(databaseID, userDetails)

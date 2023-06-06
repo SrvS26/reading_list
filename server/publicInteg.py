@@ -11,6 +11,7 @@ import datetime
 from datetime import timezone
 from decouple import config
 import logging
+import json
 
 logging.basicConfig(
     filename="server.log",
@@ -33,10 +34,18 @@ errors = {
 databaseFile = config("DATABASE_FILE_PATH")
 clientID = config("NOTION_CLIENT_ID")
 clientSecret = config("NOTION_CLIENT_SECRET")
+notion_search_url = config("NOTION_SEARCH_URL")
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+
+def default_headers(token: str):
+    return  {
+                "Notion-Version": "2022-02-22",
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            }
 
 def addToDatabase(dictionary, databaseID):
     conn = sqlite3.connect(databaseFile)
@@ -98,6 +107,41 @@ def getDatabaseID(dictionary):
         return None
 
 
+def notion_search_id(object_type: str, object_name: str, user_details: dict):
+    """
+    Takes notion object type and name and returns its unique ID.
+    :param object_type: database|page
+    :param object_name: name of database|page
+    :param user_details: {access token: str, user_id: str}
+    """
+    params = {
+        "filter": {"value": object_type, "property": "object"},
+        "query": object_name,
+    }
+    logging.info(f"Querying for {object_type} ID for {object_name}")
+    try:
+        response = requests.post(
+            notion_search_url,
+            headers = default_headers(user_details['access_token']),
+            data=json.dumps(params)
+        )
+        status_code = response.status_code
+        if status_code == 200:
+            logging.info(f"Successfuly queried for {object_type}: {object_name} for user: {user_details['user_id']}")
+            parsed_response = response.json()
+            results = parsed_response.get("results", [])
+            if len(results) > 0:
+                database_id = results[0].get("id", None)
+                return database_id
+            else:
+                logging.error(f"{object_type} named {object_name} was not found in user: {user_details['user_id']} workspace")
+                return None
+    except Exception as e:
+        logging.exception(f"Query for the {object_type}: {object_name} for user: {user_details['user_id']} failed due to {e}")
+    return status_code
+
+
+# Change the function such that retrival of database ID is done using the new funtion now in the notion.py file in app
 @app.route("/reading-list")
 def getCode():
     logging.info("Querying for code")
