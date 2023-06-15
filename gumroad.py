@@ -1,7 +1,6 @@
 import logging
 import requests
 from decouple import config
-from app import license_key_verification
 
 verify_url = config("GUMROAD_VERIFY_URL")
 gumroad_token = config("GUMROAD_TOKEN")
@@ -16,10 +15,9 @@ logging.basicConfig(
 
 
 def verify_license(license_key: str, user_details: dict) -> tuple:
-    """
-    Verifies user license key with Gumroad and returns the response and an integer if the query is successful and None and an integer if the query is unsuccessful. 
-    Each integer is representative of a certain outcome. 
-    :returns: (response|None, int)
+    """Verifies user license key with Gumroad and returns (response,response code)|(None, response code)
+    
+
     """
     params = {"product_permalink": gumroad_product_id, "license_key": license_key.strip()}
     try:

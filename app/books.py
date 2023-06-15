@@ -1,8 +1,8 @@
 import copy
 import string
 
-import custom_logger
 from decouple import config
+import custom_logger
 
 logging, listener = custom_logger.get_logger("books")
 
@@ -10,16 +10,26 @@ api_key = config("BOOK_API_KEY")
 base_url = config("BASE_URL_BOOK")
 
 
-async def get_book_details(
-    session, user_info_with_identifiers_: dict, with_key = True, retries: int = 5
-) -> dict:
-    """
-    Takes a dict with user info and book identifier and returns a dict with user information, 
-    book identifier and book details.
+async def get_book_details(session, user_info_with_identifiers_: dict, with_key = True, retries: int = 5) -> dict:
+    """Takes a dict with user info and book identifier and returns the dict updated with fetched book metadata.
+
+    param user_info_with_identifiers_: {"access_token": "access token", "user_id": "user_id", "database_id": "database_id", "is_revoked": False, "new_identifiers": {'identifier': 'value', 'page_id': 'page_id'}, "missing_properties": []}
+    param with_key: Default True. Useful if rate limited, attempts to query without API key.
+    param retries: Number of retries if rate-limited.
+    returns: {"title": "title",
+            "subtitle": "subtitle",
+            "authors": "authors",
+            "publisher": "publisher",
+            "publishedDate": "publishedDate",
+            "description": "description",
+            "industryIdentifiers": "industryIdentifiers",
+            "pageCount": "pageCount",
+            "categories": "categories",
+            "imageLinks": "imageLinks"}
     """
     user_info_with_identifiers = copy.deepcopy(user_info_with_identifiers_)
     user_id = user_info_with_identifiers["user_id"]
-    identifier = user_info_with_identifiers["new_book_identifiers"]
+    identifier = user_info_with_identifiers["new_identifiers"]
     if with_key:
         query_param = f"&key={api_key}"
     else: # when rate limited
@@ -28,11 +38,11 @@ async def get_book_details(
         )
         query_param = ""
     if retries > 0:
-        if identifier.get("type") == "Title":
+        if identifier.get("type") == "title":
             url = base_url + "?q=" + identifier['value'] + query_param
         elif (
-            identifier.get("type") == "ISBN_10"
-            or identifier.get("type") == "ISBN_13"
+            identifier.get("type") == "isbn_10"
+            or identifier.get("type") == "isbn_13"
         ):
             url = base_url + "?q=isbn:" + identifier['value'] + query_param
         web_page = await session.request(method="GET", url=url, ssl=False)
@@ -50,8 +60,7 @@ async def get_book_details(
             logging.error(
                 f"Failed request to fetch book details, Book: {identifier['value']} for user: {user_id} with {web_page.status}"
             )
-            user_info_with_identifiers["fetched_book_details"] = None
-            return user_info_with_identifiers
+            return None
         else:
             logging.info(
                 f"Book details fetched for book: {identifier['value']} for user: {user_id} with key: {with_key}"
@@ -65,7 +74,7 @@ async def get_book_details(
     if parsed_content.get("totalItems", 0) > 0:
         results_list = parsed_content["items"]
         categories_list = all_categories(results_list)
-        book_details = results_list[0].get("volumeInfo") #To obtain book details of the first, most relevant result
+        first_book_details = results_list[0].get("volumeInfo") #To obtain book details of the first, most relevant result
         required_details = [
             "title",
             "subtitle",
@@ -78,31 +87,46 @@ async def get_book_details(
             "categories",
             "imageLinks",
         ]
-        required_details_dict = {}
+        book_details = {}
         for item in required_details:
             if item == "categories":
-                required_details_dict[item] = categories_list
-            elif item in book_details.keys():
-                required_details_dict[item] = book_details[item]
+                book_details[item] = categories_list
+            elif item in first_book_details.keys():
+                book_details[item] = first_book_details[item]
             else:
                 continue
-        user_info_with_identifiers["fetched_book_details"] = required_details_dict
-        return user_info_with_identifiers
+        return book_details
     else:
         logging.warning(
             f"No book results were found for {identifier.get('type')}: {identifier.get('value')} only updating title/ISBN"
         )
-        user_info_with_identifiers["fetched_book_details"] = None
-        return user_info_with_identifiers
+        return None
 
 
 def map_dict(notion_props: dict, book_details: dict) -> dict:
-    """
-    Maps book details to respective notion properties.
+    """Maps book details to respective notion properties.
+
+    param notion_props: Dict with notion properties that will be autofilled
+    param book_details: Dict with book details fetched from source
+    returns: Dict with book details mapped to notion properties
+    {"Title": "Title|"",
+    "Subtitle": "Subtitle|"",
+    "Authors": "Authors|"",
+    "Category": "Category"|"",
+    "Pages": int|None,
+    "ISBN_10": "ISBN_10"|"",
+    "ISBN_13": "ISBN_13"|"",
+    "Other Identifier": "Other Identifier|"",
+    "Summary": "Summary"|"",
+    "Summary_extd": "Summary_extd"|"",
+    "Published": "Published"|"",
+    "Publisher": "Publisher"|"",
+    "Image_url": "Image_url"|"",
+    }
     """
     notion_props["Publisher"] = book_details.get("publisher", "")
     authors_list = []
-    if book_details.get("authors", 0) > 0:
+    if book_details.get("authors") is not None and len(book_details) != 0:
         for item in book_details["authors"]:
             authors = {"name": string.capwords(item).replace(",", "")}
             authors_list.append(authors)
@@ -135,7 +159,7 @@ def map_dict(notion_props: dict, book_details: dict) -> dict:
     if subtitle != "":
         notion_props["Subtitle"] = f": {subtitle}"
     category_list = []
-    if book_details.get("categories", 0) > 0:
+    if book_details.get("categories") != None and len(book_details["categories"]) > 0:
         for item in book_details["categories"]:
             category = {"name": string.capwords(item.replace(",", " "))}
             category_list.append(category)
@@ -148,9 +172,7 @@ def map_dict(notion_props: dict, book_details: dict) -> dict:
 
 
 def all_categories(all_results: list) -> list:
-    """
-    Returns a list of book categories (or genre) from all results of one book title/identifier
-    """
+    """To return a list of book categories (or genre) from all results of one book title/identifier"""
     all_categories = []
     for book in all_results:
         categories = book.get("volumeInfo", {}).get("categories", [])

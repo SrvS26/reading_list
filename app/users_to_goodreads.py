@@ -5,6 +5,7 @@ from decouple import config
 import logging
 
 databaseFile = config("DATABASE_FILE_PATH")
+
 logging.basicConfig(
     filename="goodreads.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",

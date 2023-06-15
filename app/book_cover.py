@@ -3,7 +3,7 @@ from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
 from decouple import config
 import os
 from uuid import uuid4
-from app import custom_logger
+import custom_logger
 import requests
 
 database_file_path = config("DATABASE_FILE_PATH")
@@ -13,93 +13,94 @@ image_file_path = config("IMAGE_PATH")
 logging, listener = custom_logger.get_logger("image")
 
 
-def get_image_path(conn, book_details: dict) -> str:
-    """
-    Takes dict with isbn 10/13 to find and return respective book image path in the database.
-    :param user_info: {}
-    :returns: str
+def get_image_path(conn, mapped_book_details: dict) -> str:
+    """Takes a dict with ISBN10/13 and returns respective processed book cover image's file path.
+
+    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
+    :returns: file path to processed image fetched from database table IMAGES
     """
     cursor = conn.cursor()
-    image = f"""SELECT image_path from IMAGES WHERE ISBN_10 = '{book_details.get("ISBN_10")}' OR ISBN_13 = '{book_details.get("ISBN_13")}'"""
+    image = f"""SELECT image_path from IMAGES WHERE ISBN_10 = '{mapped_book_details.get("ISBN_10")}' OR ISBN_13 = '{mapped_book_details.get("ISBN_13")}'"""
     cursor.execute(image)
     image_path = cursor.fetchone()
     conn.commit()
     return image_path
 
 
-def insert_image_path(conn, book_details: dict, image_name: str) -> str:
-    """
-    Takes image name and generates an file path to the image, updates the database of books with ISBN 10, 13 and the path.
-    """
+def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
+    """To generate a file path to the image, updates the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
     image_path = image_url + "/" + image_name + ".jpg"
-    if (book_details.get("ISBN_10") is None and book_details.get("ISBN_13") is None) or (
-        book_details.get("ISBN_10") == "" or book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
+    if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
+        mapped_book_details.get("ISBN_10") == "" or mapped_book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
     ):
         return image_path
     else:
-        rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{book_details.get("ISBN_10")}', '{book_details.get("ISBN_13")}', "{image_path}");"""
+        rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{mapped_book_details.get("ISBN_10")}', '{mapped_book_details.get("ISBN_13")}', "{image_path}");"""
         cursor.execute(rows)
         conn.commit()
         return image_path
 
 
-async def get_book_image(session, book_details: dict, image_name: str) -> str:
+async def async_get_book_image(session, mapped_book_details: dict, cover_image_name: str) -> str:
+    """Fetches book cover image and writes to a file, returns file name.
+
+    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
+    :param cover_image_name: Name generated from Title+ISBN_10+ISBN_13 of the book or a uuid.
+    :returns: file name
     """
-    Gets the book image and writes to a file, returns file name.
-    """
-    title = book_details["Title"]
-    image_link = book_details["Image_url"]
+    title = mapped_book_details["Title"]
+    image_link = mapped_book_details["Image_url"]
     if image_link != "":
         r = await session.get(image_link)
         x = await r.read()
-        logging.info(f"Querying for book {image_name} cover")
-        with open(image_name, "wb") as f:
+        logging.info(f"Querying for book {cover_image_name} cover")
+        with open(cover_image_name, "wb") as f:
             f.write(x)
-        return image_name
+        return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
         return "NI.jpg"
 
-def get_book_image(book_details: dict, image_name: str) -> str: #Same function, for the goodreads experiment
-    """
-    Gets the book image and writes to a file, returns file name.
+
+def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
+    """Fetches book image and writes to a file, returns file name.
+
+    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
+    :param cover_image_name: Name generated from Title+ISBN_10+ISBN_13 of the book or a uuid.
+    :returns: file name
     """
     title = book_details["Title"]
     image_link = book_details["Image_url"]
     if image_link != "":
         r = requests.get(image_link)
-        logging.info(f"Querying for book {image_name} cover")
-        with open(image_name, "wb") as f:
+        logging.info(f"Querying for book {cover_image_name} cover")
+        with open(cover_image_name, "wb") as f:
             f.write(r.content)
-        return image_name
+        return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
         return "NI.jpg"
 
-def resize_goodreads_image(image_name: str) -> str:
-    """
-    Resizes goodreads image to a uniform size to allow further processing.
-    """
+
+def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
+    """To resize goodreads book cover image to a uniform size to allow further processing."""
     with Image(filename=image_name) as img:
         img.resize(height=180, width=135)
         img.save(filename="resized_image.jpg")
     return "resized_image.jpg"
 
-def resize_image(image_name: str) -> str:
-    """
-    Resizes images to a uniform size to allow further processing.
-    """
-    with Image(filename=image_name) as img:
+
+def resize_image(cover_image_name: str) -> str:
+    """To resize book cover image to a uniform size to allow further processing."""
+    with Image(filename=cover_image_name) as img:
         img.resize(height=180)
         img.save(filename="resized_image.jpg")
     return "resized_image.jpg"
 
 
 def get_background_colour(image_name: str) -> str:
-    """
-    Returns the predominant colour in the book cover image as srgb.
-    """
+    """To get the predominant colour in the book cover image as srgb."""
     with Image(filename=image_name) as img:
         img.quantize(5, "srgb", 0, True, False)
         hist = img.histogram
@@ -109,9 +110,7 @@ def get_background_colour(image_name: str) -> str:
 
 
 def is_background_dark(srgb: str) -> bool:
-    """
-    Checks if generated background srgb value is too dark for the Notion workspace.
-    """
+    """ To checks if generated background srgb value is too dark for the Notion workspace."""
     remove_characters = "srgb%()"
     srgb_value = ""
     for letter in srgb:
@@ -129,9 +128,7 @@ def is_background_dark(srgb: str) -> bool:
 
 
 def generate_background(srgb: str) -> str:
-    """
-    Generates an image of custom size and srgb for book cover background.
-    """
+    """To get an image of custom size and srgb for book cover background. If background is too dark, generates a suitable coloured background."""
     if is_background_dark(srgb) is True:
         hex_code = "#151514"
     else:
@@ -143,9 +140,7 @@ def generate_background(srgb: str) -> str:
 
 
 def add_shadow(image_name: str, background: str) -> str:
-    """
-    Adds a shadow for the book cover on the background.
-    """
+    """To add a shadow for the book cover on the background."""
     with Image(filename=image_name) as img:
         w = img.width
         h = img.height
@@ -157,86 +152,60 @@ def add_shadow(image_name: str, background: str) -> str:
         img.save(filename="shadow_on_background.jpg")
     with Image(filename="shadow_on_background.jpg") as img:
         img.gaussian_blur(sigma=3)
-        img.save(filename="blurred_on_background.jpg")
-    return "blurred_on_background.jpg"
-
-def notion_cover_image(resized_book_cover: str, shadow_on_background: str, notion_cover_name: str) -> str:
-    with Image(filename=shadow_on_background) as img:
-        img.composite(Image(filename=resized_book_cover), gravity="center")
-        img.save(filename=f"{image_file_path}/{notion_cover_name}.jpg")
-    logging.info("Book cover image created")
-    if resized_book_cover != "NI.jpg":
-        os.remove(resized_book_cover)
-    return
+        img.save(filename="blurred_shadow_on_background.jpg")
+    return "blurred_shadow_on_background.jpg"
 
 
-def generate_unique_name(book_details: dict) -> str:
-    name = (
-            book_details.get("Title", "")
-            + book_details.get("ISBN_10", "")
-            + book_details.get("ISBN_13", "")
-        )
-    unique_name = "".join(filter(lambda x: x.isalnum(), name))
-    if unique_name == "":
-        unique_name = str(uuid4())
-    return unique_name    
-
-
-def generate_cover_image (image_name: str, final_image_name: str) -> str:
-    resized_image = resize_image(image_name)
-    background_colour = get_background_colour(image_name)
+def generate_cover_image (cover_image_name: str) -> str:
+    """To generate a fully processed book cover image ready to be uploaded to Notion"""
+    resized_image = resize_image(cover_image_name)
+    background_colour = get_background_colour(cover_image_name)
     background = generate_background(background_colour) 
     shadow_on_background = add_shadow(resized_image, background)
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{image_file_path}/{final_image_name}.jpg")
+        img.save(filename=f"{image_file_path}/{cover_image_name}.jpg")
     logging.info("Book cover image created")
-    if image_name != "NI.jpg":
-        os.remove(image_name)
-    return final_image_name
+    return cover_image_name
 
 
-async def uploadImage(session, conn, ourDic):
-    result = get_image_path(conn, ourDic)
+async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
+    """Looks for image link in the IMAGES database, if link doesn't exist, generates a processed book cover and returns a path to the file.
+    
+    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
+    :returns: file path to existing processed image or to newly processed image
+    """
+    result = get_image_path(conn, mapped_book_details) #if processed image already exists in the database for the book
     if result is not None:
         return result[0]
     else:
-        title = (
-            ourDic.get("Title", "")
-            + ourDic.get("ISBN_10", "")
-            + ourDic.get("ISBN_13", "")
-        )
-        finalTitle = "".join(filter(lambda x: x.isalnum(), title))
-        if finalTitle == "":
-            finalTitle = str(uuid4())
-        file = await get_book_image(session, ourDic, finalTitle)
-        processed_image(file, finalTitle)
-        image_link = insert_image_path(conn, ourDic, finalTitle)
+        cover_image_name = "".join(filter(lambda x: x.isalnum(), (mapped_book_details.get("Title", "")
+            + mapped_book_details.get("ISBN_10", "")
+            + mapped_book_details.get("ISBN_13", ""))))
+        if cover_image_name == "":
+            cover_image_name = str(uuid4())
+        file = await async_get_book_image(session, mapped_book_details, cover_image_name)
+        generate_cover_image(cover_image_name)
+        image_link = insert_image_path(conn, mapped_book_details, cover_image_name)
         return image_link
+    
 
-def upload_image(conn, ourDic):
-    result = get_image_path(conn, ourDic)
+def upload_image(conn, mapped_book_details: dict) -> str: #Same function for the Goodreads experiment
+    """Looks for image link in the IMAGES database, if link doesn't exist, generates a processed book cover and returns a path to the file.
+    
+    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
+    :returns: file path to existing processed image or to newly processed image
+    """
+    result = get_image_path(conn, mapped_book_details)
     if result is not None:
         return result[0]
     else:
-        title = (
-            ourDic.get("Title", "")
-            + ourDic.get("ISBN_10", "")
-            + ourDic.get("ISBN_13", "")
-        )
-        finalTitle = "".join(filter(lambda x: x.isalnum(), title))
-        if finalTitle == "":
-            finalTitle = str(uuid4())
-        file = get_book_image(ourDic, finalTitle)
-        rightSize = resize_goodreads_image(file)
-        imageColour = get_background_colour(file)
-        background = generate_background(imageColour)
-        shadowBackground = add_shadow(rightSize, background)
-        with Image(filename=shadowBackground) as img:
-            img.composite(Image(filename=rightSize), gravity="center")
-            img.save(filename=f"{image_file_path}/{finalTitle}.jpg")
-        logging.info("Book cover image created")
-        if file != "NI.jpg":
-            os.remove(file)
-        image_link = insert_image_path(conn, ourDic, finalTitle)
+        cover_image_name = "".join(filter(lambda x: x.isalnum(), (mapped_book_details.get("Title", "")
+            + mapped_book_details.get("ISBN_10", "")
+            + mapped_book_details.get("ISBN_13", ""))))
+        if cover_image_name == "":
+            cover_image_name = str(uuid4())
+        file = get_book_image(mapped_book_details, cover_image_name)
+        generate_cover_image(cover_image_name)
+        image_link = insert_image_path(conn, mapped_book_details, cover_image_name)
         return image_link
