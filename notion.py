@@ -196,7 +196,7 @@ async def failure_update(session, user_info_: dict) -> dict:
     """Updates Notion database with new book identifier without the semicolon in case of failure to retrieve book details."""
     user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
-    identifiers = user_info["new_book_identifiers"]
+    identifiers = user_info["new_identifiers"]
     url = notion_url+ f"pages/{identifiers['page_id']}"
     if identifiers["type"] == "title":
         payload = {
@@ -225,14 +225,15 @@ async def failure_update(session, user_info_: dict) -> dict:
         url=url,
         json=payload,
         headers=default_headers(user_info["access_token"]),
+        ssl=False
     )
     if r.status == 401 or r.status == 404:
         logging.warning(f"Access revoked/Database missing for user: {user_id}")
         user_info["is_revoked"] = True
         return user_info
     elif r.status == 200:
-        logging.info(f"Succesfully removed ';' for user: {user_id} with value: {user_info['new_book_identifiers']['value']}")
+        logging.info(f"Succesfully removed ';' for user: {user_id} with value: {user_info['new_identifiers']['value']}")
         return user_info
     else:
-        logging.error(f"Failed to update database for user: {user_id} with value: {user_info['new_book_identifiers']['value']} in cannot retrieve, status: {r.status}")
+        logging.error(f"Failed to update database for user: {user_id} with value: {user_info['new_identifiers']['value']} in cannot retrieve, status: {r.status}")
         return user_info

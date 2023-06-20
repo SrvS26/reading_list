@@ -5,7 +5,7 @@ import logging
 import scrape_goodreads
 
 logging.basicConfig(
-    filename="goodreads.log",
+    filename="process_csv.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
     level = logging.DEBUG

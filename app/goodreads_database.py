@@ -4,7 +4,7 @@ import logging
 
 databaseFile = config("DATABASE_FILE_PATH")
 logging.basicConfig(
-    filename="goodreads.log",
+    filename="goodreads_database.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
     level = logging.DEBUG

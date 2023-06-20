@@ -4,7 +4,7 @@ import custom_logger
 
 databaseFile = config("DATABASE_FILE_PATH")
 
-logging, listener = custom_logger.get_logger("usersDatabase")
+logging, listener = custom_logger.get_logger("database")
 
 def connect_database(db_file: str):
     """Connection to database file

@@ -9,8 +9,10 @@ import requests
 database_file_path = config("DATABASE_FILE_PATH")
 image_url = config("BASE_IMAGE_URL")
 image_file_path = config("IMAGE_PATH")
+processing_images_path = image_file_path + "processing_book_covers/"
+final_images_path = image_file_path + "final_book_covers/"
 
-logging, listener = custom_logger.get_logger("image")
+logging, listener = custom_logger.get_logger("book_cover")
 
 
 def get_image_path(conn, mapped_book_details: dict) -> str:
@@ -30,7 +32,7 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
 def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
     """To generate a file path to the image, updates the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
-    image_path = image_url + "/" + image_name + ".jpg"
+    image_path = image_url + "final_book_covers" + image_name + ".jpg"
     if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
         mapped_book_details.get("ISBN_10") == "" or mapped_book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
     ):
@@ -55,12 +57,12 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
         r = await session.get(image_link)
         x = await r.read()
         logging.info(f"Querying for book {cover_image_name} cover")
-        with open(cover_image_name, "wb") as f:
+        with open(processing_images_path + cover_image_name, "wb") as f:
             f.write(x)
-        return cover_image_name
+        return processing_images_path + cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return "NI.jpg"
+        return f"{final_images_path}NI.jpg"
 
 
 def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
@@ -80,23 +82,23 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
         return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return "NI.jpg"
+        return f"{image_file_path}NI.jpg"
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
     """To resize goodreads book cover image to a uniform size to allow further processing."""
     with Image(filename=image_name) as img:
         img.resize(height=180, width=135)
-        img.save(filename="resized_image.jpg")
-    return "resized_image.jpg"
+        img.save(filename=f"{processing_images_path}resized_image.jpg")
+    return f"{processing_images_path}resized_image.jpg"
 
 
 def resize_image(cover_image_name: str) -> str:
     """To resize book cover image to a uniform size to allow further processing."""
     with Image(filename=cover_image_name) as img:
         img.resize(height=180)
-        img.save(filename="resized_image.jpg")
-    return "resized_image.jpg"
+        img.save(filename=f"{processing_images_path}resized_image.jpg")
+    return f"{processing_images_path}resized_image.jpg"
 
 
 def get_background_colour(image_name: str) -> str:
@@ -135,25 +137,25 @@ def generate_background(srgb: str) -> str:
         hex_code = srgb  # input is srgbcode
     with Color(hex_code) as bg:
         with Image(width=500, height=200, background=bg) as img:
-            img.save(filename="background.jpg")
-    return "background.jpg"
+            img.save(filename=f"{processing_images_path}background.jpg")
+    return f"{processing_images_path}background.jpg"
 
 
 def add_shadow(image_name: str, background: str) -> str:
     """To add a shadow for the book cover on the background."""
-    with Image(filename=image_name) as img:
+    with Image(filename=f"{image_name}") as img:
         w = img.width
         h = img.height
     with Color("#000005") as bg:
         with Image(width=(w + 5), height=(h + 5), background=bg) as img:
-            img.save(filename="shadow.jpg")
+            img.save(filename=f"{processing_images_path}shadow.jpg")
     with Image(filename=background) as img:
-        img.composite(Image(filename="shadow.jpg"), gravity="center")
-        img.save(filename="shadow_on_background.jpg")
-    with Image(filename="shadow_on_background.jpg") as img:
+        img.composite(Image(filename=f"{processing_images_path}shadow.jpg"), gravity="center")
+        img.save(filename=f"{processing_images_path}shadow_on_background.jpg")
+    with Image(filename=f"{processing_images_path}shadow_on_background.jpg") as img:
         img.gaussian_blur(sigma=3)
-        img.save(filename="blurred_shadow_on_background.jpg")
-    return "blurred_shadow_on_background.jpg"
+        img.save(filename=f"{processing_images_path}blurred_shadow_on_background.jpg")
+    return f"{processing_images_path}blurred_shadow_on_background.jpg"
 
 
 def generate_cover_image (cover_image_name: str) -> str:
@@ -164,8 +166,10 @@ def generate_cover_image (cover_image_name: str) -> str:
     shadow_on_background = add_shadow(resized_image, background)
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{image_file_path}/{cover_image_name}.jpg")
+        img.save(filename=f"{cover_image_name}.jpg")
     logging.info("Book cover image created")
+    if cover_image_name != "NI.jpg":
+        os.remove(cover_image_name)
     return cover_image_name
 
 
@@ -185,7 +189,7 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
         if cover_image_name == "":
             cover_image_name = str(uuid4())
         file = await async_get_book_image(session, mapped_book_details, cover_image_name)
-        generate_cover_image(cover_image_name)
+        generate_cover_image(file)
         image_link = insert_image_path(conn, mapped_book_details, cover_image_name)
         return image_link
     

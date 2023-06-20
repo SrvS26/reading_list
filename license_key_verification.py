@@ -13,7 +13,7 @@ gumroad_token = config("GUMROAD_TOKEN")
 gumroad_product_id = config("GUMROAD_PRODUCT_ID")
 
 logging.basicConfig(
-    filename="license_key.log",
+    filename="license_key_verification.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     level=logging.DEBUG,
     datefmt="%d-%b-%y %H:%M:%S",

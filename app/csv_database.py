@@ -16,7 +16,7 @@ clientID = config("NOTION_CLIENT_ID")
 clientSecret = config("NOTION_CLIENT_SECRET")
 
 logging.basicConfig(
-    filename="goodreads.log",
+    filename="csv_database.log",
     format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
     level = logging.DEBUG
