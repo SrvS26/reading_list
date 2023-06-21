@@ -2,10 +2,10 @@ import asyncio
 import copy
 import time
 from decouple import config
-import app.books
-import database
-import app.book_cover
-import notion
+import books.books
+import database.database as database
+import book_covers.book_cover
+import notion.notion as notion
 import app.process_data
 from aiohttp import ClientSession
 import custom_logger
@@ -72,12 +72,12 @@ async def get_book_details(session, conn, user_info_with_identifiers):
     :param user_info_with_identifiers: {"access_token": "access token", "user_id": "user_id", "database_id": "database_id", "is_revoked": False, "new_identifiers": {}, "missing_properties": []}
     :returns: {"access_token": "access token", "user_id": "user_id", "database_id": "database_id", "is_revoked": False, "new_identifiers": {}, "missing_properties": [], "book_details": {}, "mapped_book_details": {}, "image_file_path: "image_file_path"}
     """
-    book_details = await app.books.get_book_details(session, user_info_with_identifiers)
+    book_details = await books.books.get_book_details(session, user_info_with_identifiers)
     user_info_with_identifiers["book_details"] = book_details
     if book_details is not None:
-        mapped_books_details = app.books.map_dict(copy.deepcopy(notion_props_dict), book_details)
+        mapped_books_details = books.books.map_dict(copy.deepcopy(notion_props_dict), book_details)
         user_info_with_identifiers["mapped_book_details"] = mapped_books_details
-        user_info_with_identifiers["image_file_path"] = await app.book_cover.async_upload_image(
+        user_info_with_identifiers["image_file_path"] = await book_covers.book_cover.async_upload_image(
             session, conn, mapped_books_details
         )
     user_info_with_books = user_info_with_identifiers    

@@ -4,8 +4,8 @@ from decouple import config
 import requests
 import logging
 import time
-import database
-import notion
+import database.database as database
+import notion.notion as notion
 
 
 verify_url = config("GUMROAD_VERIFY_URL")

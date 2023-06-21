@@ -1,7 +1,7 @@
 from distutils.debug import DEBUG
 import requests
 import time
-import notion
+import notion.notion as notion
 from flask import Flask
 from flask import request
 from flask import render_template
@@ -13,6 +13,8 @@ from datetime import timezone
 from decouple import config
 import logging
 import json
+
+# file_path = config("STATIC_FILE_PATH")
 
 logging.basicConfig(
     filename="server.log",
