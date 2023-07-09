@@ -32,7 +32,7 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
 def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
     """To generate a file path to the image, updates the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
-    image_path = image_url + "final_book_covers" + image_name + ".jpg"
+    image_path = image_url + "final_book_covers/" + image_name + ".jpg"
     if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
         mapped_book_details.get("ISBN_10") == "" or mapped_book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
     ):
@@ -62,7 +62,7 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
         return processing_images_path + cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return f"{final_images_path}NI.jpg"
+        return f"{final_images_path}NI.png"
 
 
 def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
@@ -82,7 +82,7 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
         return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return f"{image_file_path}NI.jpg"
+        return f"{image_file_path}NI.png"
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
@@ -112,7 +112,7 @@ def get_background_colour(image_name: str) -> str:
 
 
 def is_background_dark(srgb: str) -> bool:
-    """ To checks if generated background srgb value is too dark for the Notion workspace."""
+    """ To check if generated background srgb value is too dark for the Notion workspace."""
     remove_characters = "srgb%()"
     srgb_value = ""
     for letter in srgb:
@@ -131,7 +131,7 @@ def is_background_dark(srgb: str) -> bool:
 
 def generate_background(srgb: str) -> str:
     """To get an image of custom size and srgb for book cover background. If background is too dark, generates a suitable coloured background."""
-    if is_background_dark(srgb) is True:
+    if is_background_dark(srgb):
         hex_code = "#151514"
     else:
         hex_code = srgb  # input is srgbcode
@@ -168,7 +168,7 @@ def generate_cover_image (cover_image_name: str) -> str:
         img.composite(Image(filename=resized_image), gravity="center")
         img.save(filename=f"{cover_image_name}.jpg")
     logging.info("Book cover image created")
-    if cover_image_name != "NI.jpg":
+    if cover_image_name != "NI.png":
         os.remove(cover_image_name)
     return cover_image_name
 

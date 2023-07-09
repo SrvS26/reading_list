@@ -106,7 +106,7 @@ def get_code():
             logging.error(f"Failed due to: {e}")
             return redirect(url_for("error", error=100))
         user_workspace_details = response.json()
-        access_token = user_workspace_details.get("access_token")
+        access_token = user_workspace_details.get("access_token", "")
         time.sleep(2)
         params = {
             "filter": {"value": "database", "property": "object"},
@@ -114,15 +114,16 @@ def get_code():
         }
         logging.info("Querying for database ID")
         user_info = {"access_token": access_token, "user_id": user_workspace_details.get("owner", {}).get("user", {}).get("id", "")}
-        database_id = notion.notion_search_id("database", "Bookshelf", user_info)
-        if database_id is None:
-            dbId = "-1"
-        else:
-            dbId = database_id
-        add_to_database(user_workspace_details, dbId)
-        if dbId == "-1":
-            return redirect(url_for("error", error=101))
-        return redirect(url_for("success"))
+        if user_info["access_token"] != "" and user_info["user_id"] != "":
+            database_id = notion.notion_search_id("database", "Bookshelf", user_info)
+            if database_id is None:
+                dbId = "-1"
+            else:
+                dbId = database_id
+            add_to_database(user_workspace_details, dbId)
+            if dbId == "-1":
+                return redirect(url_for("error", error=101))
+            return redirect(url_for("success"))
     else:
         error = request.args.get("error")
         if error is not None:
