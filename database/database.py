@@ -47,7 +47,10 @@ def fetch_records(conn, table_name: str, column_names: list, fetch_all: bool = T
 
 
 def disable_users(conn, list_revoked_users: list):
-    """Takes a list of dicts with the user details of users how have revoked the integrations access to their database or deleted their database and updates respective properties in their database to avoid repeated queries to their notion workspace
+    """Takes a list of dicts with the user details of users who have
+    1. revoked the access to the integration
+    2. deleted their Notion database
+    and updates respective properties in their database to avoid repeated queries to their Notion workspace
     
     :param list_revoked_users: {"access_token": "access token", "user_id": "user_id", "database_id": "database_id", "is_revoked": True, "new_identifiers": {'identifier': 'value', 'page_id': 'page_id'}, "missing_properties": []}
     """
