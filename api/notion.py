@@ -105,7 +105,7 @@ async def get_data_from_database(session, user_info_: dict, payload: str) -> dic
 
 
 def get_available_props(user_id: str, notion_data) -> list:
-    """To return a list of properties in a user's Notion database that overlap with the properties intended to be autofilled."""
+    """Get a list of properties in a user's Notion database that overlap with the properties intended to be autofilled."""
     props_list = []
     if len(notion_data) > 0:
         available_props = notion_data[0]["properties"] #Each result has a list of all available properties in the database
@@ -193,7 +193,7 @@ async def update_database(session, user_info_with_books_: dict) -> dict:
 
 
 async def failure_update(session, user_info_: dict) -> dict:
-    """Updates Notion database with new book identifier without the semicolon in case of failure to retrieve book details."""
+    """Update Notion database with new book identifier without the semicolon in case of failure to retrieve book details."""
     user_info = copy.deepcopy(user_info_)
     user_id = user_info["user_id"]
     identifiers = user_info["new_identifiers"]

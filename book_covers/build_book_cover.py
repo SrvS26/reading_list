@@ -30,7 +30,7 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
 
 
 def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
-    """To generate a file path to the image, updates the database table IMAGES with ISBN 10, 13 and the path."""
+    """Generate a file path to the image, update the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
     image_path = image_url + "final_book_covers/" + image_name + ".jpg"
     if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
@@ -86,7 +86,7 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
-    """To resize goodreads book cover image to a uniform size to allow further processing."""
+    """Resize goodreads book cover image to a uniform size to allow further processing."""
     with Image(filename=image_name) as img:
         img.resize(height=180, width=135)
         img.save(filename=f"{processing_images_path}resized_image.jpg")
@@ -94,7 +94,7 @@ def resize_goodreads_image(image_name: str) -> str: #Same function, for the good
 
 
 def resize_image(cover_image_name: str) -> str:
-    """To resize book cover image to a uniform size to allow further processing."""
+    """Resize book cover image to a uniform size to allow further processing."""
     with Image(filename=cover_image_name) as img:
         img.resize(height=180)
         img.save(filename=f"{processing_images_path}resized_image.jpg")
@@ -102,7 +102,7 @@ def resize_image(cover_image_name: str) -> str:
 
 
 def get_background_colour(image_name: str) -> str:
-    """To get the predominant colour in the book cover image as srgb."""
+    """Get the predominant colour in the book cover image as srgb."""
     with Image(filename=image_name) as img:
         img.quantize(5, "srgb", 0, True, False)
         hist = img.histogram
@@ -112,7 +112,7 @@ def get_background_colour(image_name: str) -> str:
 
 
 def is_background_dark(srgb: str) -> bool:
-    """ To check if generated background srgb value is too dark for the Notion workspace."""
+    """Check if generated background srgb value is too dark for the Notion workspace."""
     remove_characters = "srgb%()"
     srgb_value = ""
     for letter in srgb:
@@ -130,7 +130,7 @@ def is_background_dark(srgb: str) -> bool:
 
 
 def generate_background(srgb: str) -> str:
-    """To get an image of custom size and srgb for book cover background. If background is too dark, generates a suitable coloured background."""
+    """Get an image of custom size and srgb for book cover background. If background is too dark, get a suitable coloured background."""
     if is_background_dark(srgb):
         hex_code = "#151514"
     else:
@@ -142,7 +142,7 @@ def generate_background(srgb: str) -> str:
 
 
 def add_shadow(image_name: str, background: str) -> str:
-    """To add a shadow for the book cover on the background."""
+    """Add a shadow for the book cover on the background."""
     with Image(filename=f"{image_name}") as img:
         w = img.width
         h = img.height
@@ -159,7 +159,7 @@ def add_shadow(image_name: str, background: str) -> str:
 
 
 def generate_cover_image (cover_image_name: str) -> str:
-    """To generate a fully processed book cover image ready to be uploaded to Notion"""
+    """Get a fully processed book cover image ready to be uploaded to Notion"""
     resized_image = resize_image(cover_image_name)
     background_colour = get_background_colour(cover_image_name)
     background = generate_background(background_colour) 

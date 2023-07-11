@@ -172,7 +172,7 @@ def map_dict(notion_props: dict, book_details: dict) -> dict:
 
 
 def all_categories(all_results: list) -> list:
-    """To return a list of book categories (or genre) from all results of one book title/identifier"""
+    """Get a list of book categories (or genre) from all results of one book title/identifier"""
     all_categories = []
     for book in all_results:
         categories = book.get("volumeInfo", {}).get("categories", [])

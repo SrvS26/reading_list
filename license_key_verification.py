@@ -73,7 +73,7 @@ def revoked_access() -> list:
 
 
 def update_validated_status(user_id: str, license_key: str):
-    """To update the license key validated status and the license key in the USERS database."""
+    """Update the license key validated status and the license key in the USERS database."""
     cursor = conn.cursor()
     data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0, license_key = '{license_key}' WHERE user_id = '{user_id}'"""
     try:
@@ -130,7 +130,7 @@ def get_license_key(database_id: str, user_info) -> tuple:
 
 
 def purchased_goodreads(user_id: str): #For Goodreads experiment
-    """To add user details to GOODREADS table if user has purchased the goodreads import feature"""
+    """Add user details to GOODREADS table if user has purchased the goodreads import feature"""
     cursor_object = conn.cursor()
     data = f"""INSERT INTO GOODREADS (user_id) VALUES ('{user_id}')"""
     cursor_object.execute(data)
@@ -141,7 +141,7 @@ def purchased_goodreads(user_id: str): #For Goodreads experiment
 
 
 def update_page(page_id: str, value: int, user_info: dict, license_key: str):
-    """To update status of license key on the user's Notion "License Key" database"""
+    """Update status of license key on the user's Notion "License Key" database"""
     access_token = user_info["access_token"]
     userID = user_info["user_id"]
     url = f"https://api.notion.com/v1/pages/{page_id}"
@@ -196,7 +196,7 @@ def verify_license(license_key: str, user_details: dict) -> tuple:
     
 
 def gumroad_response(response, user_id: str, license_key: str, revoked_users: list) -> int:
-    """To check if license key is successfully validated and to ensure that the license is key is being used only by one user."""
+    """Check if license key is successfully validated and to ensure that the license is key is being used only by one user."""
     if response.get("success") == True:
         logging.info("License key successfully validated")
         num_uses = response.get("uses", None)
@@ -217,7 +217,7 @@ def gumroad_response(response, user_id: str, license_key: str, revoked_users: li
 
 
 def get_gumroad_variant(response) -> bool:
-    """To checks if user has purchased the product with/without additional goodreads import feature"""
+    """Check if user has purchased the product with/without additional goodreads import feature"""
     tier = response.get("purchase").get("variants")
     return tier == "(Auto-fill Feature with Goodreads Import)"     
 

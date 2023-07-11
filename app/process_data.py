@@ -77,7 +77,7 @@ def get_identifiers(notion_data: list, user_id:str) -> list:
 
 
 def missing_props(user_props: list) -> list:
-    """To return a list of properties the user may have deleted"""
+    """Get a list of properties the user may have deleted"""
     missing_props = set(notion_props_list) - set(user_props)
     return list(missing_props)
 

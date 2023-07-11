@@ -7,7 +7,7 @@ User=ubuntu
 Group=www-data
 WorkingDirectory=/home/ubuntu/reading_list/server
 Environment="PATH=/home/ubuntu/reading_list/server/virt/bin"
-ExecStart=/home/ubuntu/reading_list/server/virt/bin/uwsgi --ini publicInteg.ini
+ExecStart=/home/ubuntu/reading_list/server/virt/bin/uwsgi --ini server.ini
 
 [Install]
 WantedBy=multi-user.target
