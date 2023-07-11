@@ -4,7 +4,7 @@ from decouple import config
 import requests
 import logging
 import time
-import database.database as database
+import database.records as records
 import notion.notion as notion
 
 

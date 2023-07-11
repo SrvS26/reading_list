@@ -3,8 +3,8 @@ import copy
 import time
 from decouple import config
 import books.books
-import database.database as database
-import book_covers.book_cover
+import database.records as records
+import book_covers.build_book_cover
 import notion.notion as notion
 import app.process_data
 from aiohttp import ClientSession
@@ -50,7 +50,7 @@ api_key = config("BOOK_API_KEY")
 
 logging, listener = custom_logger.get_logger("main")
 
-conn = database.connect_database(database_file)
+conn = records.connect_database(database_file)
 
 
 async def get_new_identifiers(session, user_info: dict) -> dict:
@@ -77,7 +77,7 @@ async def get_book_details(session, conn, user_info_with_identifiers):
     if book_details is not None:
         mapped_books_details = books.books.map_dict(copy.deepcopy(notion_props_dict), book_details)
         user_info_with_identifiers["mapped_book_details"] = mapped_books_details
-        user_info_with_identifiers["image_file_path"] = await book_covers.book_cover.async_upload_image(
+        user_info_with_identifiers["image_file_path"] = await book_covers.build_book_cover.async_upload_image(
             session, conn, mapped_books_details
         )
     user_info_with_books = user_info_with_identifiers    
@@ -93,12 +93,12 @@ async def update_notion(session, user_info_with_books):
         user_info_end = copy.deepcopy(user_info_with_books)
     if user_info_end["is_revoked"]:
         list_revoked_users = list(filter(lambda x: x["is_revoked"], user_info_end))
-        database.disable_users(conn, list_revoked_users)
+        records.disable_users(conn, list_revoked_users)
     return None
 
 
 async def run_main():
-    validated_users = database.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}])
+    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}])
     validated_users_details = app.process_data.validated_users(validated_users)
     async with ClientSession(trust_env=True) as session:
         user_info_with_notion = await asyncio.gather(
