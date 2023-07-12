@@ -10,7 +10,7 @@ database_file_path = config("DATABASE_FILE_PATH")
 image_url = config("BASE_IMAGE_URL")
 image_file_path = config("IMAGE_PATH")
 processing_images_path = image_file_path + "processing_book_covers/"
-final_images_path = image_file_path + "final_book_covers/"
+
 
 logging, listener = custom_logger.get_logger("book_cover")
 
@@ -82,7 +82,7 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
         return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return f"{image_file_path}/final_book_covers/NI.png"
+        return f"{image_file_path}/NI.png"
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
@@ -167,7 +167,7 @@ def generate_cover_image (cover_image_name: str) -> str:
     shadow_on_background = add_shadow(resized_image, background)
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{final_images_path}{cover_image_name}.jpg")
+        img.save(filename=f"{image_file_path}{cover_image_name}.jpg")
     logging.info("Book cover image created")
     if cover_image_name != "NI.png":
         os.remove(f"{processing_images_path}{cover_image_name}")

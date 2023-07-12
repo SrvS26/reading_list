@@ -112,14 +112,9 @@ def get_license_key(database_id: str, user_info) -> tuple:
                         results.get("properties", {}).get("License Key", {}).get("title", [])
                     )
                 if len(license_key_) != 0:
-                    license_key_text = license_key_[0].get("plain_text", None)
-                    if license_key_text == "":
-                        license_key_text = license_key_[1].get("plain_text", None)
-                        license_key = ''.join(license_key_text.splitlines())
-                        logging.info(f"Received license key: {license_key_text} for user: {user_id}")
-                    else:    
-                        license_key = ''.join(license_key_text[:-1].splitlines())
-                        logging.info(f"Received license key: {license_key_text} for user: {user_id}")
+                    #formatting when copied from the Gumroad email gives 3 separate strings and an invalid license key response. We join the individual strings, remove splitlines and then join the result.
+                    license_key = "".join("".join(key["plain_text"] for key in license_key_)[:-1].splitlines())
+                    logging.info(f"Received license key: {license_key} for user: {user_id}")
                     page_id = results.get("id", None)
                     return license_key, page_id
                 else:
