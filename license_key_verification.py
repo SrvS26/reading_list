@@ -5,7 +5,7 @@ import requests
 import logging
 import time
 import database.records as records
-import notion.notion as notion
+import api.notion as notion
 
 
 verify_url = config("GUMROAD_VERIFY_URL")
@@ -113,8 +113,13 @@ def get_license_key(database_id: str, user_info) -> tuple:
                     )
                 if len(license_key_) != 0:
                     license_key_text = license_key_[0].get("plain_text", None)
-                    logging.info(f"Received license key: {license_key_text} for user: {user_id}")
-                    license_key = ''.join(license_key_text[:-1].splitlines())
+                    if license_key_text == "":
+                        license_key_text = license_key_[1].get("plain_text", None)
+                        license_key = ''.join(license_key_text.splitlines())
+                        logging.info(f"Received license key: {license_key_text} for user: {user_id}")
+                    else:    
+                        license_key = ''.join(license_key_text[:-1].splitlines())
+                        logging.info(f"Received license key: {license_key_text} for user: {user_id}")
                     page_id = results.get("id", None)
                     return license_key, page_id
                 else:

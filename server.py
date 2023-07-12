@@ -1,7 +1,7 @@
 from distutils.debug import DEBUG
 import requests
 import time
-import notion.notion as notion
+import api.notion as notion
 from flask import Flask
 from flask import request
 from flask import render_template

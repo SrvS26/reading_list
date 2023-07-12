@@ -59,10 +59,10 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
         logging.info(f"Querying for book {cover_image_name} cover")
         with open(processing_images_path + cover_image_name, "wb") as f:
             f.write(x)
-        return processing_images_path + cover_image_name
+        return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return f"{final_images_path}NI.png"
+        return "NI.png"
 
 
 def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
@@ -82,7 +82,7 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
         return cover_image_name
     else:
         logging.info(f"Book {title} has no image")
-        return f"{image_file_path}NI.png"
+        return f"{image_file_path}/final_book_covers/NI.png"
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
@@ -160,16 +160,17 @@ def add_shadow(image_name: str, background: str) -> str:
 
 def generate_cover_image (cover_image_name: str) -> str:
     """Get a fully processed book cover image ready to be uploaded to Notion"""
-    resized_image = resize_image(cover_image_name)
-    background_colour = get_background_colour(cover_image_name)
+    path_to_image = processing_images_path + cover_image_name
+    resized_image = resize_image(path_to_image)
+    background_colour = get_background_colour(path_to_image)
     background = generate_background(background_colour) 
     shadow_on_background = add_shadow(resized_image, background)
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{cover_image_name}.jpg")
+        img.save(filename=f"{final_images_path}{cover_image_name}.jpg")
     logging.info("Book cover image created")
     if cover_image_name != "NI.png":
-        os.remove(cover_image_name)
+        os.remove(f"{processing_images_path}{cover_image_name}")
     return cover_image_name
 
 
