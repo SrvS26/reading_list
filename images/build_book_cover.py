@@ -29,19 +29,19 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
     return image_path
 
 
-def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
+def insert_image_path(conn, mapped_book_details: dict, cover_image_name: str) -> str:
     """Generate a file path to the image, update the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
-    image_path = image_url + image_name + ".jpg"
+    image_path = image_url + cover_image_name
     if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
         mapped_book_details.get("ISBN_10") == "" or mapped_book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
     ):
-        return image_path
+        return
     else:
         rows = f"""INSERT INTO IMAGES (ISBN_10, ISBN_13, image_path) VALUES ('{mapped_book_details.get("ISBN_10")}', '{mapped_book_details.get("ISBN_13")}', "{image_path}");"""
         cursor.execute(rows)
         conn.commit()
-        return image_path
+        return
 
 
 async def async_get_book_image(session, mapped_book_details: dict, cover_image_name: str) -> str:
@@ -53,16 +53,12 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
     """
     title = mapped_book_details["Title"]
     image_link = mapped_book_details["Image_url"]
-    if image_link != "":
-        r = await session.get(image_link)
-        x = await r.read()
-        logging.info(f"Querying for book {cover_image_name} cover")
-        with open(processing_images_path + cover_image_name, "wb") as f:
-            f.write(x)
-        return cover_image_name
-    else:
-        logging.info(f"Book {title} has no image")
-        return "NI.png"
+    r = await session.get(image_link)
+    x = await r.read()
+    logging.info(f"Querying for book {cover_image_name} cover")
+    with open(processing_images_path + cover_image_name, "wb") as f:
+        f.write(x)
+    return cover_image_name
 
 
 def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
@@ -74,15 +70,11 @@ def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same func
     """
     title = book_details["Title"]
     image_link = book_details["Image_url"]
-    if image_link != "":
-        r = requests.get(image_link)
-        logging.info(f"Querying for book {cover_image_name} cover")
-        with open(cover_image_name, "wb") as f:
-            f.write(r.content)
-        return cover_image_name
-    else:
-        logging.info(f"Book {title} has no image")
-        return f"{image_file_path}/NI.png"
+    r = requests.get(image_link)
+    logging.info(f"Querying for book {cover_image_name} cover")
+    with open(cover_image_name, "wb") as f:
+        f.write(r.content)
+    return cover_image_name
 
 
 def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
@@ -167,10 +159,18 @@ def generate_cover_image (cover_image_name: str) -> str:
     shadow_on_background = add_shadow(resized_image, background)
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{image_file_path}{cover_image_name}.jpg")
+        img.save(filename=f"{image_file_path}{cover_image_name}")
     logging.info("Book cover image created")
-    if cover_image_name != "NI.png":
-        os.remove(f"{processing_images_path}{cover_image_name}")
+    return
+
+
+def generate_image_name(mapped_book_details: dict) -> str:
+    """Generate an image name using the book identifiers or a unique uuid if the book has no identifiers"""
+    cover_image_name = "".join(filter(lambda x: x.isalnum(), (mapped_book_details.get("Title", "")
+            + mapped_book_details.get("ISBN_10", "")
+            + mapped_book_details.get("ISBN_13", "")))) + ".jpg"
+    if cover_image_name == "":
+        cover_image_name = str(uuid4()) + '.jpg'
     return cover_image_name
 
 
@@ -184,15 +184,15 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
     if result is not None:
         return result[0]
     else:
-        cover_image_name = "".join(filter(lambda x: x.isalnum(), (mapped_book_details.get("Title", "")
-            + mapped_book_details.get("ISBN_10", "")
-            + mapped_book_details.get("ISBN_13", ""))))
-        if cover_image_name == "":
-            cover_image_name = str(uuid4())
-        file = await async_get_book_image(session, mapped_book_details, cover_image_name)
-        generate_cover_image(file)
-        image_link = insert_image_path(conn, mapped_book_details, cover_image_name)
-        return image_link
+        if mapped_book_details['Image_url'] != "":
+            cover_image_name = generate_image_name(mapped_book_details)
+            file = await async_get_book_image(session, mapped_book_details, cover_image_name)
+            generate_cover_image(file)  
+            insert_image_path(conn, mapped_book_details, cover_image_name)
+            return image_url + cover_image_name
+        elif mapped_book_details['Image_url'] == "":
+            return image_url + 'NI.png'
+
     
 
 def upload_image(conn, mapped_book_details: dict) -> str: #Same function for the Goodreads experiment
