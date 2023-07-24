@@ -4,7 +4,7 @@ import time
 from decouple import config
 import book_sources.source_01
 import database.records as records
-import book_covers.build_book_cover
+import images.build_book_cover
 import api.notion as notion
 import app.process_data
 from aiohttp import ClientSession
@@ -77,7 +77,7 @@ async def get_book_details(session, conn, user_info_with_identifiers):
     if book_details is not None:
         mapped_books_details = book_sources.source_01.map_dict(copy.deepcopy(notion_props_dict), book_details)
         user_info_with_identifiers["mapped_book_details"] = mapped_books_details
-        user_info_with_identifiers["image_file_path"] = await book_covers.build_book_cover.async_upload_image(
+        user_info_with_identifiers["image_file_path"] = await images.build_book_cover.async_upload_image(
             session, conn, mapped_books_details
         )
     user_info_with_books = user_info_with_identifiers    
@@ -98,7 +98,7 @@ async def update_notion(session, user_info_with_books):
 
 
 async def run_main():
-    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}])
+    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "0"]},{"condition": ["user_email", "=", "'sravanthi.ss@gmail.com'"]}])
     validated_users_details = app.process_data.validated_users(validated_users)
     async with ClientSession(trust_env=True) as session:
         user_info_with_notion = await asyncio.gather(

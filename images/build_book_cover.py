@@ -32,7 +32,7 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
 def insert_image_path(conn, mapped_book_details: dict, image_name: str) -> str:
     """Generate a file path to the image, update the database table IMAGES with ISBN 10, 13 and the path."""
     cursor = conn.cursor()
-    image_path = image_url + "final_book_covers/" + image_name + ".jpg"
+    image_path = image_url + image_name + ".jpg"
     if (mapped_book_details.get("ISBN_10") is None and mapped_book_details.get("ISBN_13") is None) or (
         mapped_book_details.get("ISBN_10") == "" or mapped_book_details.get("ISBN_13") == "" #Books that have no ISBN 10/13 were being updated with wrong images
     ):
