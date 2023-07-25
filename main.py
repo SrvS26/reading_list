@@ -9,6 +9,7 @@ import api.notion as notion
 import app.process_data
 from aiohttp import ClientSession
 import custom_logger
+import os
 
 payload_new_identifiers = '{"filter": {"or": [{"property": "Title","rich_text": {"ends_with": ";"}},{"property": "ISBN_10","rich_text": {"ends_with": ";"}},{"property": "ISBN_13","rich_text": {"ends_with": ";"}}]}}'
 
@@ -51,6 +52,12 @@ api_key = config("BOOK_API_KEY")
 logging, listener = custom_logger.get_logger("main")
 
 conn = records.connect_database(database_file)
+
+processing_image_path = config("IMAGE_PATH") + "processing_book_covers"
+
+
+if not os.path.exists(processing_image_path):
+    os.mkdir(processing_image_path)
 
 
 async def get_new_identifiers(session, user_info: dict) -> dict:
