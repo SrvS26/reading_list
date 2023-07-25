@@ -30,7 +30,7 @@ def fetch_records(conn, table_name: str, column_names: list, fetch_all: bool = T
         conditions = []
         for item in condition_list:
             conditions.append(" ".join(item["condition"]))
-        all_conditions =  " WHERE " + " AND ".join(conditions)    
+        all_conditions =  " WHERE " + " AND NOT ".join(conditions)    
     else:
         all_conditions = ""   
     data = f"""SELECT {", ".join(column_names)} from {table_name}{all_conditions}"""

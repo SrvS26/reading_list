@@ -55,6 +55,8 @@ conn = records.connect_database(database_file)
 
 processing_image_path = config("IMAGE_PATH") + "processing_book_covers"
 
+temp_user = config("TEMP_USER")
+
 
 if not os.path.exists(processing_image_path):
     os.mkdir(processing_image_path)
@@ -105,7 +107,7 @@ async def update_notion(session, user_info_with_books):
 
 
 async def run_main():
-    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}])
+    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}, {"condition":["user_id", "=", f"'{temp_user}'"]}])
     validated_users_details = app.process_data.validated_users(validated_users)
     async with ClientSession(trust_env=True) as session:
         user_info_with_notion = await asyncio.gather(
