@@ -61,30 +61,6 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
     return cover_image_name
 
 
-def get_book_image(book_details: dict, cover_image_name: str) -> str: #Same function, for the goodreads experiment
-    """Fetches book image and writes to a file, returns file name.
-
-    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
-    :param cover_image_name: Name generated from Title+ISBN_10+ISBN_13 of the book or a uuid.
-    :returns: file name
-    """
-    title = book_details["Title"]
-    image_link = book_details["Image_url"]
-    r = requests.get(image_link)
-    logging.info(f"Querying for book {cover_image_name} cover")
-    with open(cover_image_name, "wb") as f:
-        f.write(r.content)
-    return cover_image_name
-
-
-def resize_goodreads_image(image_name: str) -> str: #Same function, for the goodreads experiment
-    """Resize goodreads book cover image to a uniform size to allow further processing."""
-    with Image(filename=image_name) as img:
-        img.resize(height=180, width=135)
-        img.save(filename=f"{processing_images_path}resized_image.jpg")
-    return f"{processing_images_path}resized_image.jpg"
-
-
 def resize_image(cover_image_name: str) -> str:
     """Resize book cover image to a uniform size to allow further processing."""
     with Image(filename=cover_image_name) as img:
@@ -192,25 +168,3 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
             return image_url + cover_image_name
         elif mapped_book_details['Image_url'] == "":
             return image_url + 'NI.png'
-
-    
-
-def upload_image(conn, mapped_book_details: dict) -> str: #Same function for the Goodreads experiment
-    """Looks for image link in the IMAGES database, if link doesn't exist, generates a processed book cover and returns a path to the file.
-    
-    :param mapped_book_details: {"Title": "Title|"", "Subtitle": "Subtitle|"", "Authors": "Authors|"", "Category": "Category"|"", "Pages": int|None, "ISBN_10": "ISBN_10"|"", "ISBN_13": "ISBN_13"|"", "Other Identifier": "Other Identifier|"", "Summary": "Summary"|"", "Summary_extd": "Summary_extd"|"", "Published": "Published"|"", "Publisher": "Publisher"|"", "Image_url": "Image_url"|""}
-    :returns: file path to existing processed image or to newly processed image
-    """
-    result = get_image_path(conn, mapped_book_details)
-    if result is not None:
-        return result[0]
-    else:
-        cover_image_name = "".join(filter(lambda x: x.isalnum(), (mapped_book_details.get("Title", "")
-            + mapped_book_details.get("ISBN_10", "")
-            + mapped_book_details.get("ISBN_13", ""))))
-        if cover_image_name == "":
-            cover_image_name = str(uuid4())
-        file = get_book_image(mapped_book_details, cover_image_name)
-        generate_cover_image(cover_image_name)
-        image_link = insert_image_path(conn, mapped_book_details, cover_image_name)
-        return image_link
