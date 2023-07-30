@@ -14,6 +14,9 @@ Fetches book metadata and adds to respective properties in a Notion database. An
 
 ## Autofill feature in action
 
-![The Bookshelf](bookshelf.mp4)
+
+https://github.com/SrvS26/reading_list/assets/92995533/4b703739-b33f-4318-b312-be73e3fbd124
+
+
 
 
