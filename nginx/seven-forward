@@ -18,12 +18,12 @@ server {
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/home/ubuntu/reading_list/server/server.sock;
+        uwsgi_pass unix:/home/ubuntu/reading_list/server.sock;
     }
 
     location ^~ /static/  {
         include /etc/nginx/mime.types;
-	    root /home/ubuntu/reading_list/server/;
+	    root /home/ubuntu/reading_list/;
     }
 
     location ^~ /images/ {
