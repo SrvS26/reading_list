@@ -69,7 +69,7 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
     return status_code
 
 
-async def get_data_from_database(session, user_info_: dict, payload: str) -> dict:
+async def get_data_from_database(session, user_info_: dict, payload: str) -> dict | None | int:
     """Takes user info and returns a dict with user info and newly added book identifiers
     
     :param user_info_: {user_id: str, database_id: str, access_token: str}
@@ -85,12 +85,10 @@ async def get_data_from_database(session, user_info_: dict, payload: str) -> dic
         response = await session.request(method="POST", url=url, data=payload, headers=headers, ssl=False)
         if response.status == 401:
             logging.warning(f"No access to {user_id}'s Notion page/workspace")
-            user_info["is_revoked"] = True
-            return None
+            return -1 #for these users, is_revoked will be set to True (and therefore, 1 in the database)
         elif response.status == 404:
             logging.warning(f"Cannot find database{user_info['database_id']} for user:{user_id}")
-            user_info["is_revoked"] = True
-            return None
+            return -1 #for these users, is_revoked will be set to True (and therefore, 1 in the database)
         elif response.status == 200:
             logging.info(f"Accessed database: {user_info['database_id']} and fetched required data for user: {user_id}")
             parsed_response = await response.json()

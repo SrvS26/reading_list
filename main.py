@@ -69,7 +69,9 @@ async def get_new_identifiers(session, user_info: dict) -> dict:
     :returns: {"access_token": "access token", "user_id": "user_id", "database_id": "database_id", "is_revoked": False, "new_identifiers": [], "missing_properties": []}
     """
     notion_data = await notion.get_data_from_database(session, user_info, payload_new_identifiers)
-    if notion_data is not None:
+    if notion_data == -1:
+        user_info["is_revoked"] = True
+    elif notion_data is not None:
         user_info['new_identifiers'] = app.process_data.get_identifiers(notion_data, user_info['user_id'])
         user_info['missing_properties'] = app.process_data.missing_props(notion.get_available_props(user_info['user_id'], notion_data))
     return user_info
