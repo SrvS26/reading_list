@@ -7,6 +7,7 @@ import database.records as records
 import images.build_book_cover
 import api.notion as notion
 import app.process_data
+import aiohttp
 from aiohttp import ClientSession
 import custom_logger
 import os
@@ -61,6 +62,14 @@ temp_user = config("TEMP_USER")
 if not os.path.exists(processing_image_path):
     os.mkdir(processing_image_path)
 
+async def on_request_start(session, context, params):
+    logging, listener = custom_logger.get_logger("aiohttp.client")
+    logging.debug(f'Starting request <{params}>')
+
+async def on_response_chunk_received(session, context, params):
+    logging, listener = custom_logger.get_logger("aiohttp.client")
+    logging.debug(f'Received response')
+
 
 async def get_new_identifiers(session, user_info: dict) -> dict:
     """Takes a dict with user details and returns it updated with new identifiers (if any) added to the user's database and missing properties in the user's database.
@@ -109,9 +118,12 @@ async def update_notion(session, user_info_with_books):
 
 
 async def run_main():
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
     validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}, {"condition":["user_id", "=", f"'{temp_user}'"]}])
     validated_users_details = app.process_data.validated_users(validated_users)
-    async with ClientSession(trust_env=True) as session:
+    async with ClientSession(trust_env=True, trace_configs=[trace_config]) as session:
         user_info_with_notion = await asyncio.gather(
             *[
                 get_new_identifiers(session, user_info)
