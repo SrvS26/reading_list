@@ -26,7 +26,6 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
     cursor.execute(image)
     image_path = cursor.fetchone()
     conn.commit()
-    logging.info("ACTION: Book image url exists and fetched")
     return image_path
 
 
@@ -159,6 +158,7 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
     """
     result = get_image_path(conn, mapped_book_details) #if processed image already exists in the database for the book
     if result is not None:
+        logging.info("ACTION: Book image url exists and fetched")
         return result[0]
     else:
         if mapped_book_details['Image_url'] != "":
