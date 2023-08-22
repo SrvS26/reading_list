@@ -70,7 +70,7 @@ def get_identifiers(notion_data: list, user_id:str) -> list:
                 page_id = item["id"]
                 identifier["page_id"] = page_id
                 new_identifiers_list.append(identifier)
-        logging.info(f"New titles/ISBN extracted from new additions to BookShelf database for user: {user_id}")
+        logging.info(f"ACTION: New titles/ISBN extracted from new additions to BookShelf database for user: {user_id}")
     else:
         logging.info(f"No changes in BookShelf/No new titles/ISBN found for user: {user_id}")
     return new_identifiers_list

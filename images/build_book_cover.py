@@ -26,6 +26,7 @@ def get_image_path(conn, mapped_book_details: dict) -> str:
     cursor.execute(image)
     image_path = cursor.fetchone()
     conn.commit()
+    logging.info("ACTION: Book image url exists and fetched")
     return image_path
 
 
@@ -136,7 +137,7 @@ def generate_cover_image (cover_image_name: str) -> str:
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
         img.save(filename=f"{image_file_path}{cover_image_name}")
-    logging.info("Book cover image created")
+    logging.info("ACTION: Book cover image created")
     return
 
 

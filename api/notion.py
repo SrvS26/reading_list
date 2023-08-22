@@ -93,6 +93,8 @@ async def get_data_from_database(session, user_info_: dict, payload: str) -> dic
             logging.info(f"Accessed database: {user_info['database_id']} and fetched required data for user: {user_id}")
             parsed_response = await response.json()
             results = parsed_response["results"]
+            if len(results) > 0:
+                logging.info(f"ACTION: New books found in the Bookshelf database for user: {user_id}")
             return results
         else:
             logging.error(f"Failed to fetch data from database: {user_info['database_id']} due to status code: {response.status}, response: {await response.content} for user: {user_id}")
@@ -110,7 +112,7 @@ def get_available_props(user_id: str, notion_data) -> list:
         for item in available_props.keys():
             if item in notion_props_list:
                 props_list.append(item)
-        logging.info(f"All available fields to fill in database fetched for user: {user_id}")
+        logging.info(f"ACTION: All available fields to fill in database extracted for user: {user_id}")
     else:
         logging.info(f"There are no new additions or the notion database 'Bookshelf' is empty for user: {user_id}")
     return props_list
@@ -167,7 +169,7 @@ async def update_database(session, user_info_with_books_: dict) -> dict:
     }
     for item in user_info_with_books["missing_properties"]:
         del payload["properties"][item]
-    logging.info(f"Adding New book details to Bookshelf for user: {user_id}, book: {user_info_with_books['new_identifiers']['value']}")
+    logging.info(f"ACTION: Adding New book details to Bookshelf for user: {user_id}, book: {user_info_with_books['new_identifiers']['value']}")
     # Added to solve the conflict_error, does not completely resolve it, only reduces it.
     await asyncio.sleep(1)
     r = await session.request(
@@ -230,7 +232,7 @@ async def failure_update(session, user_info_: dict) -> dict:
         user_info["is_revoked"] = True
         return user_info
     elif r.status == 200:
-        logging.info(f"Succesfully removed ';' for user: {user_id} with value: {user_info['new_identifiers']['value']}")
+        logging.info(f"ACTION: Succesfully removed ';' for user: {user_id} with value: {user_info['new_identifiers']['value']}")
         return user_info
     else:
         logging.error(f"Failed to update database for user: {user_id} with value: {user_info['new_identifiers']['value']} in cannot retrieve, status: {r.status}")
