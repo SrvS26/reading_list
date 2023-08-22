@@ -63,7 +63,7 @@ async def get_book_details(session, user_info_with_identifiers_: dict, with_key 
             return None
         else:
             logging.info(
-                f"Book details fetched for book: {identifier['value']} for user: {user_id} with key: {with_key}"
+                f"ACTION: Book details fetched for book: {identifier['value']} for user: {user_id} with key: {with_key}"
             )
         parsed_content = await web_page.json()
     else:

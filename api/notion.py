@@ -188,7 +188,7 @@ async def update_database(session, user_info_with_books_: dict) -> dict:
         logging.error(f"Could not update database with new book details for {user_id}, Title: {mapped_book_details['Title']}, ISBN_13; {mapped_book_details['ISBN_13']}: {parsed_response}")
         return user_info_with_books
     else:
-        logging.info(f"Successfully updated book for user: {user_id}")
+        logging.info(f"ACTION: Successfully updated book for user: {user_id}")
         return user_info_with_books
 
 
