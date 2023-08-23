@@ -16,7 +16,7 @@ def connect_database(db_file: str):
     return conn
 
 
-def fetch_records(conn, table_name: str, column_names: list, fetch_all: bool = True, condition_list: list = []) -> tuple:
+def fetch_records(conn, table_name: str, column_names: list, fetch_all: bool = True, condition_list: list = []) -> list:
     """Fetches data from a table in the connected database.
     
     :param table_name: name of the table in the database

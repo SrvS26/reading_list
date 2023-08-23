@@ -11,6 +11,7 @@ import aiohttp
 from aiohttp import ClientSession
 import custom_logger
 import os
+import math
 
 payload_new_identifiers = '{"filter": {"or": [{"property": "Title","rich_text": {"ends_with": ";"}},{"property": "ISBN_10","rich_text": {"ends_with": ";"}},{"property": "ISBN_13","rich_text": {"ends_with": ";"}}]}}'
 
@@ -70,6 +71,13 @@ async def on_response_chunk_received(session, context, params):
     logging, listener = custom_logger.get_logger("aiohttp.client")
     logging.debug(f'Received response')
 
+def get_all_validated():
+    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}, {"condition":["user_id", "=", f"'{temp_user}'"]}])
+    validated_users_details = app.process_data.validated_users(validated_users)
+    num_users = math.ceil(len(validated_users_details)/3)
+    return ([validated_users_details[x:x+num_users] for x in range(0, len(validated_users_details), num_users)])
+
+
 
 async def get_new_identifiers(session, user_info: dict) -> dict:
     """Takes a dict with user details and returns it updated with new identifiers (if any) added to the user's database and missing properties in the user's database.
@@ -117,12 +125,12 @@ async def update_notion(session, user_info_with_books):
     return None
 
 
-async def run_main():
+async def run_main(validated_users_details):
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_response_chunk_received.append(on_response_chunk_received)
-    validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}, {"condition":["user_id", "=", f"'{temp_user}'"]}])
-    validated_users_details = app.process_data.validated_users(validated_users)
+    # validated_users = records.fetch_records(conn, "USERS", ["access_token", "user_id", "database_id"], True, [{"condition":["is_validated", "=", "1"]}, {"condition":["user_id", "=", f"'{temp_user}'"]}])
+    # validated_users_details = app.process_data.validated_users(validated_users)
     async with ClientSession(trust_env=True, trace_configs=[trace_config]) as session:
         user_info_with_notion = await asyncio.gather(
             *[
@@ -148,9 +156,10 @@ async def run_main():
             ]
         )
 
-
 while True:
     listener.start()
-    asyncio.run(run_main())
-    time.sleep(5)
+    for sublist in get_all_validated():
+        print(sublist)
+        asyncio.run(run_main(sublist))
+        time.sleep(2)
     listener.stop()
