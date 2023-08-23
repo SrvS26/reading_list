@@ -159,7 +159,6 @@ async def run_main(validated_users_details):
 while True:
     listener.start()
     for sublist in get_all_validated():
-        print(sublist)
         asyncio.run(run_main(sublist))
         time.sleep(2)
     listener.stop()
