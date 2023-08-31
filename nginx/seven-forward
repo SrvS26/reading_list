@@ -14,16 +14,21 @@ server {
 #    server_name notion-reading-list.eastus2.cloudapp.azure.com;
 	 listen 80;
         listen [::]:80;
+	server_name seven-forward.com www.seven-forward.com;
     expires $expires;
+
+    location = /95234572-31ed-4221-a921-93c1b3e4cb4f-e8886d87-9c1c-4ebd-a4bd-5700c12a3b4a {
+        stub_status;
+    }
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/home/ubuntu/reading_list/server.sock;
+        uwsgi_pass unix:/home/ubuntu/ReadingList/server.sock;
     }
 
     location ^~ /static/  {
         include /etc/nginx/mime.types;
-	    root /home/ubuntu/reading_list/;
+	    root /home/ubuntu/ReadingList/;
     }
 
     location ^~ /images/ {

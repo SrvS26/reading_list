@@ -5,9 +5,9 @@ After=network.target
 [Service]
 User=ubuntu
 Group=www-data
-WorkingDirectory=/home/ubuntu/clean_code/
-Environment="PATH=/home/ubuntu/clean_code/virt/bin"
-ExecStart=/home/ubuntu/clean_code/virt/bin/uwsgi --ini server.ini
+WorkingDirectory=/home/ubuntu/ReadingList/
+Environment="PATH=/home/ubuntu/ReadingList/virt/bin"
+ExecStart=/home/ubuntu/ReadingList/virt/bin/uwsgi --ini server.ini
 
 [Install]
 WantedBy=multi-user.target
