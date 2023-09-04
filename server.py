@@ -25,7 +25,7 @@ logging.basicConfig(
 
 errors = {
     100: "There appears to be an error. Please try again later.",
-    101: "Could not find the Bookshelf database. Please ensure Autofill Bookshelf was given access to the Bookshelf database.",
+    101: "Could not find the Bookshelf database.\nPlease ensure Autofill Bookshelf was given access to the Bookshelf database.",
     102: "To use Autofill Bookshelf, please allow access.",
     103: "User not found",
     104: "You have not granted access to Autofill Bookshelf",
@@ -107,7 +107,7 @@ def get_code():
             return redirect(url_for("error", error=100))
         user_workspace_details = response.json()
         access_token = user_workspace_details.get("access_token", "")
-        time.sleep(2)
+        time.sleep(10)
         params = {
             "filter": {"value": "database", "property": "object"},
             "query": "Bookshelf",
