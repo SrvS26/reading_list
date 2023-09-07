@@ -12,3 +12,4 @@ __pycache__
 *.readme
 app.log*
 !HOWTO.md
+*.rdb

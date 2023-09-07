@@ -107,7 +107,7 @@ def get_code():
             return redirect(url_for("error", error=100))
         user_workspace_details = response.json()
         access_token = user_workspace_details.get("access_token", "")
-        time.sleep(2)
+        time.sleep(10)
         params = {
             "filter": {"value": "database", "property": "object"},
             "query": "Bookshelf",

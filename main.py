@@ -113,6 +113,8 @@ async def get_book_details(session, conn, user_info_with_identifiers):
 async def update_notion(session, user_info_with_books):
     if user_info_with_books["book_details"] is not None:
         user_info_end = await notion.update_database(session, user_info_with_books)
+        if user_info_end is None:
+            user_info_end = await notion.failure_update(session, user_info_with_books)
     elif user_info_with_books["book_details"] is None:
         user_info_end = await notion.failure_update(session, user_info_with_books)
     else:
