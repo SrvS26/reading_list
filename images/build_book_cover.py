@@ -12,7 +12,7 @@ image_file_path = config("IMAGE_PATH")
 processing_images_path = image_file_path + "processing_book_covers/"
 
 
-logging, listener = custom_logger.get_logger("book_cover")
+logging = custom_logger.get_logger()
 
 
 def get_image_path(conn, mapped_book_details: dict) -> str:
@@ -55,7 +55,7 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
     image_link = mapped_book_details["Image_url"]
     r = await session.get(image_link)
     x = await r.read()
-    logging.info(f"Querying for book {cover_image_name} cover")
+    await logging.ainfo("Querying for book cover", cover_image=cover_image_name, book_title=title)
     with open(processing_images_path + cover_image_name, "wb") as f:
         f.write(x)
     return cover_image_name
@@ -136,7 +136,7 @@ def generate_cover_image (cover_image_name: str) -> str:
     with Image(filename=shadow_on_background) as img:
         img.composite(Image(filename=resized_image), gravity="center")
         img.save(filename=f"{image_file_path}{cover_image_name}")
-    logging.info("ACTION: Book cover image created")
+    logging.info("Book cover image created", category="ACTION")
     return
 
 
@@ -158,7 +158,7 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
     """
     result = get_image_path(conn, mapped_book_details) #if processed image already exists in the database for the book
     if result is not None:
-        logging.info("ACTION: Book image url exists and fetched")
+        await logging.ainfo("ACTION: Book image url exists and fetched")
         return result[0]
     else:
         if mapped_book_details['Image_url'] != "":

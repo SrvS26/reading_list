@@ -1,4 +1,3 @@
-from distutils.debug import DEBUG
 import requests
 import time
 import api.notion as notion
@@ -6,22 +5,15 @@ from flask import Flask
 from flask import request
 from flask import render_template
 from flask import redirect, url_for
-from requests.auth import HTTPBasicAuth
 import sqlite3
 import datetime
-from datetime import timezone
 from decouple import config
 import logging
-import json
+import custom_logger
 
 # file_path = config("STATIC_FILE_PATH")
 
-logging.basicConfig(
-    filename="server.log",
-    level= logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-)
+logging = custom_logger.get_logger()
 
 errors = {
     100: "There appears to be an error. Please try again later.",
@@ -52,7 +44,7 @@ def default_headers(token: str):
 def add_to_database(user_workspace_details, database_id: str):
     """To insert into database table USERS all the workspace details of a user"""
     conn = sqlite3.connect(database_file)
-    logging.debug(f"Connected to database file '{database_file}'")
+    logging.debug("Connected to database file", db_file=database_file)
     cursor_object = conn.cursor()
     try:
         access_token = user_workspace_details.get("access_token", "")
@@ -69,27 +61,26 @@ def add_to_database(user_workspace_details, database_id: str):
             .get("email", "")
         )
         time_added = datetime.datetime.now(datetime.timezone.utc).timestamp()
-    except Exception as e:
-        logging.exception(f"Exception occurred: {e}")
+    except Exception:
+        logging.exception("Exception occurred while adding to database", database_id=database_id, user_id=user_workspace_details.get("owner", {}).get("user", {}).get("id", ""))
     data = f"""INSERT INTO USERS (access_token, database_id, bot_id, workspace_name, workspace_id, owner_type, user_id, user_name, user_email, time_added) VALUES (
         '{access_token}', '{database_id}', '{bot_id}', "{workspace_name}", '{workspace_id}', '{owner_type}', '{user_id}', '{user_name}', '{user_email}', {time_added}
     ) ON CONFLICT (user_id) DO UPDATE SET access_token = '{access_token}', database_id = '{database_id}';"""  # workspace_name has double quotes as a single quote exists in the string itself
     try:
         cursor_object.execute(data)
-        logging.info(f"Inserted data into table for user {user_id}")
+        logging.info("Inserted data into table", user_id=user_id, database_id=database_id)
         conn.commit()
     except Exception as e:
-        logging.exception(f"Insert failed for {user_id}: {e}")
+        logging.exception("Insert failed", user_id=user_id, database_id=database_id)
     cursor_object.close()
     return
 
 
 @app.route("/reading-list")
 def get_code():
-    logging.info("Querying for code")
+    logging.debug("Querying for code from Notion")
     code = request.args.get("code", None)
     if code is not None:
-        logging.info("Successfully retrieved code")
         token_url = notion_url + "oauth/token"
         params = {"grant_type": "authorization_code", "code": code}
         logging.info("Querying for access token")
@@ -98,12 +89,12 @@ def get_code():
                 token_url, data=params, auth=(client_id, client_secret)
             )
             if response.status_code != 200:
-                logging.error(f"{response.status_code}: {response.json()}")
+                logging.error("Error from Notion", status_code=response.status_code, response=response.json(), service="notion")
                 return redirect(url_for("error", error=100))
             else:
-                logging.info("Successfully retrieved access token using code")
-        except Exception as e:
-            logging.error(f"Failed due to: {e}")
+                logging.info("Successfully retrieved access token using code", service="notion")
+        except Exception:
+            logging.error("Failed to fetch access token", service="notion")
             return redirect(url_for("error", error=100))
         user_workspace_details = response.json()
         access_token = user_workspace_details.get("access_token", "")
@@ -127,7 +118,7 @@ def get_code():
     else:
         error = request.args.get("error")
         if error is not None:
-            logging.error(f"Notion redirected with an error {error}")
+            logging.error("Notion redirected with an error", data=error, service="notion")
             return redirect(url_for("error", error=102))
         else:
             return redirect(url_for("error", error=100))

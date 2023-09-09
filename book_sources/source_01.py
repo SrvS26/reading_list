@@ -4,7 +4,7 @@ import string
 from decouple import config
 import custom_logger
 
-logging, listener = custom_logger.get_logger("books")
+logging = custom_logger.get_logger()
 
 api_key = config("BOOK_API_KEY")
 base_url = config("BASE_URL_BOOK")
@@ -33,8 +33,11 @@ async def get_book_details(session, user_info_with_identifiers_: dict, with_key 
     if with_key:
         query_param = f"&key={api_key}"
     else: # when rate limited
-        logging.warning(
-            f"Retrying fetching book details without API key for user: {user_id} for book: {identifier['value']}"
+        await logging.awarning(
+            "Retrying fetching book details without API key",
+            user_id=user_id,
+            book_info=identifier["value"],
+            book_source=1
         )
         query_param = ""
     if retries > 0:
@@ -47,8 +50,14 @@ async def get_book_details(session, user_info_with_identifiers_: dict, with_key 
             url = base_url + "?q=isbn:" + identifier['value'] + query_param
         web_page = await session.request(method="GET", url=url, ssl=False)
         if web_page.status == 429:
-            logging.error(
-                f"Rate limited, Book: {identifier['value']} for user: {user_id} with {web_page.status} with key: {with_key}"
+            await logging.aerror(
+                "Rate limited by provider",
+                book_type=identifier.get("type"),
+                book_info=identifier["value"],
+                user_id=user_id,
+                status_code=web_page.status,
+                with_key=with_key,
+                book_source=1
             )
             return await get_book_details(
                 session,
@@ -57,18 +66,18 @@ async def get_book_details(session, user_info_with_identifiers_: dict, with_key 
                 retries = retries - 1,
             )
         elif web_page.status != 200:
-            logging.error(
-                f"Failed request to fetch book details, Book: {identifier['value']} for user: {user_id} with {web_page.status}"
+            await logging.aerror(
+                "Failed request to fetch book details", book_info=identifier['value'], user_id= user_id, status_code=web_page.status, book_source=1
             )
             return None
         else:
-            logging.info(
-                f"ACTION: Book details fetched for book: {identifier['value']} for user: {user_id} with key: {with_key}"
+            await logging.ainfo(
+                "Book details fetched", book_info=identifier['value'], user_id= user_id, with_key=with_key, category="ACTION", book_source=1
             )
         parsed_content = await web_page.json()
     else:
         logging.error(
-            f"Exhausted retries for book: {identifier['value']} for user: {user_id}"
+            "Exhausted retries for book", book_info=identifier['value'], user_id= user_id, book_source=1
         )
         parsed_content = {}
     if parsed_content.get("totalItems", 0) > 0:
@@ -97,8 +106,8 @@ async def get_book_details(session, user_info_with_identifiers_: dict, with_key 
                 continue
         return book_details
     else:
-        logging.warning(
-            f"No book results were found for {identifier.get('type')}: {identifier.get('value')} only updating title/ISBN"
+        await logging.awarning(
+            "No book results found, only updating title/ISBN", book_type=identifier.get('type'), book_info=identifier.get('value'), book_source=1
         )
         return None
 
@@ -167,7 +176,7 @@ def map_dict(notion_props: dict, book_details: dict) -> dict:
     if book_details.get("imageLinks") != None:
         imageLink = book_details["imageLinks"]["thumbnail"]
         notion_props["Image_url"] = imageLink
-    logging.info("Book details matched to appropriate fields in BookShelf")
+    logging.info("Book details matched to appropriate fields in BookShelf", book_source=1)
     return notion_props
 
 

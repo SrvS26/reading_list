@@ -20,7 +20,7 @@ notion_props_list = [
     "Other Identifier",
 ]
 
-logging, listener = custom_logger.get_logger("notion")
+logging = custom_logger.get_logger()
 
 notion_url = config("NOTION_URL")
 
@@ -46,7 +46,9 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
         "filter": {"value": object_type, "property": "object"},
         "query": object_name,
     }
-    logging.info(f"Querying for {object_type} ID for {object_name}")
+    logging.info(
+        "Querying for object", object_type=object_type, object_name=object_name, user_id=user_details["user_id"], service="notion"
+    )
     try:
         response = requests.post(
             notion_search_url,
@@ -55,17 +57,35 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
         )
         status_code = response.status_code
         if status_code == 200:
-            logging.info(f"Successfuly queried for {object_type}: {object_name} for user: {user_details['user_id']}")
+            logging.info(
+                "Successfuly queried for object",
+                object_type=object_type,
+                object_name=object_name,
+                user_id=user_details["user_id"],
+                service="notion"
+            )
             parsed_response = response.json()
             results = parsed_response.get("results", [])
             if len(results) > 0:
                 database_id = results[0].get("id", None)
                 return database_id
             else:
-                logging.error(f"{object_type} named {object_name} was not found in user: {user_details['user_id']} workspace")
+                logging.error(
+                    "Object not found",
+                    object_type=object_type,
+                    object_name=object_name,
+                    user_id=user_details["user_id"],
+                    service="notion",
+                )
                 return None
-    except Exception as e:
-        logging.exception(f"Query for the {object_type}: {object_name} for user: {user_details['user_id']} failed due to {e}")
+    except Exception:
+        logging.exception(
+            "Query for object failed",
+            object_type=object_type,
+            object_name=object_name,
+            user_id=user_details["user_id"],
+            service="notion"
+        )
     return status_code
 
 
@@ -80,27 +100,63 @@ async def get_data_from_database(session, user_info_: dict, payload: str) -> dic
     database_id = user_info["database_id"]
     url = notion_url + f"databases/{database_id}/query"
     headers = default_headers(user_info["access_token"])
-    logging.info(f"Applying filters and fetching new additions to BookShelf for {user_id}")
+    logging.info(
+        "Applying filters and fetching new additions to BookShelf", user_id=user_id, service="notion"
+    )
     try:
         response = await session.request(method="POST", url=url, data=payload, headers=headers, ssl=False)
         if response.status == 401:
-            logging.warning(f"No access to {user_id}'s Notion page/workspace")
+            await logging.awarning(
+                "No access to Notion page/workspace",
+                user_id=user_id,
+                status_code=response.status,
+                service="notion"
+            )
             return -1 #for these users, is_revoked will be set to True (and therefore, 1 in the database)
         elif response.status == 404:
-            logging.warning(f"Cannot find database{user_info['database_id']} for user:{user_id}")
+            await logging.awarning(
+                "Cannot find database",
+                database_id=user_info["database_id"],
+                user_id=user_id,
+                status_code=response.status,
+                service="notion"
+            )
             return -1 #for these users, is_revoked will be set to True (and therefore, 1 in the database)
         elif response.status == 200:
-            logging.info(f"Accessed database: {user_info['database_id']} and fetched required data for user: {user_id}")
+            await logging.ainfo(
+                "Accessed database and fetched data",
+                database_id=user_info["database_id"],
+                user_id=user_id,
+                service="notion"
+            )
             parsed_response = await response.json()
             results = parsed_response["results"]
             if len(results) > 0:
-                logging.info(f"ACTION: New books found in the Bookshelf database for user: {user_id}")
+                await logging.ainfo(
+                    "New books found in the Bookshelf database",
+                    user_id=user_id,
+                    category="ACTION",
+                    database_id=user_info["database_id"],
+                    service="notion"
+                )
             return results
         else:
-            logging.error(f"Failed to fetch data from database: {user_info['database_id']} due to status code: {response.status}, response: {await response.content} for user: {user_id}")
+            await logging.aerror(
+                "Failed to fetch data from database",
+                database_id=user_info["database_id"],
+                status_code=response.status,
+                response=await response.content,
+                user_id=user_id,
+                service="notion"
+            )
             return None
-    except Exception as e:
-        logging.error(f"Failed to fetch data from database: {user_info['database_id']} for user: {user_id}, Error: {e}")
+    except Exception:
+        await logging.aexception(
+            "Failed to fetch data from database",
+            database_id=user_info["database_id"],
+            user_id=user_id,
+            service="notion"
+        )
         return None
 
 
@@ -112,9 +168,18 @@ def get_available_props(user_id: str, notion_data) -> list:
         for item in available_props.keys():
             if item in notion_props_list:
                 props_list.append(item)
-        logging.info(f"ACTION: All available fields to fill in database extracted for user: {user_id}")
+        logging.info(
+            "All available fields to fill in database extracted",
+            user_id=user_id,
+            category="ACTION",
+            service="notion"
+        )
     else:
-        logging.info(f"There are no new additions or the notion database 'Bookshelf' is empty for user: {user_id}")
+        logging.info(
+            "There are no new additions or the notion database 'Bookshelf' is empty",
+            user_id=user_id,
+            service="notion"
+        )
     return props_list
 
 
@@ -170,7 +235,13 @@ async def update_database(session, user_info_with_books_: dict) -> dict:
     }
     for item in user_info_with_books["missing_properties"]:
         del payload["properties"][item]
-    logging.info(f"ACTION: Adding New book details to Bookshelf for user: {user_id}, book: {user_info_with_books['new_identifiers']['value']}")
+    await logging.ainfo(
+        "Adding new book details to Bookshelf",
+        book_info=user_info_with_books["new_identifiers"]["value"],
+        category="ACTION",
+        user_id=user_id,
+        service="notion"
+    )
     # Added to solve the conflict_error, does not completely resolve it, only reduces it.
     await asyncio.sleep(1)
     r = await session.request(
@@ -182,14 +253,26 @@ async def update_database(session, user_info_with_books_: dict) -> dict:
     )
     parsed_response = await r.json()
     if r.status == 401 or r.status == 404:
-        logging.warning(f"Access revoked/Database missing for {user_id}, status: {r.status}")
+        await logging.awarning(
+            "Access revoked or database missing", status_code=r.status, user_id=user_id, service="notion"
+        )
         user_info_with_books["is_revoked"] = True
         return user_info_with_books
     elif r.status != 200:
-        logging.error(f"Could not update database with new book details for {user_id}, Title: {mapped_book_details['Title']}, ISBN_13; {mapped_book_details['ISBN_13']}: {parsed_response}")
+        await logging.aerror(
+            "Could not update database with new book details",
+            book_title=mapped_book_details["Title"],
+            book_isbn_13=mapped_book_details["ISBN_13"],
+            response=parsed_response,
+            user_id=user_id,
+            status_code=r.status,
+            service="notion"
+        )
         return None #In order to do a failure update
     else:
-        logging.info(f"ACTION: Successfully updated book for user: {user_id}")
+        await logging.ainfo(
+            "Successfully updated book for user", user_id=user_id, category="ACTION", service="notion"
+        )
         return user_info_with_books
 
 
@@ -229,12 +312,26 @@ async def failure_update(session, user_info_: dict) -> dict:
         ssl=False
     )
     if r.status == 401 or r.status == 404:
-        logging.warning(f"Access revoked/Database missing for user: {user_id}")
+        await logging.awarning(
+            "Access revoked or database missing", user_id=user_id, status_code=r.status, service="notion"
+        )
         user_info["is_revoked"] = True
         return user_info
     elif r.status == 200:
-        logging.info(f"ACTION: Succesfully removed ';' for user: {user_id} with value: {user_info['new_identifiers']['value']}")
+        await logging.ainfo(
+            "Succesfully removed ';'",
+            input=user_info["new_identifiers"]["value"],
+            user_id=user_id,
+            category="ACTION",
+            service="notion"
+        )
         return user_info
     else:
-        logging.error(f"Failed to update database for user: {user_id} with value: {user_info['new_identifiers']['value']} in cannot retrieve, status: {r.status}")
+        await logging.aerror(
+            "Failed to update database in cannot retrieve",
+            input=user_info["new_identifiers"]["value"],
+            status_code=r.status,
+            user_id=user_id,
+            service="notion"
+        )
         return user_info

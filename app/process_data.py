@@ -25,7 +25,7 @@ def validated_users(records: list) -> list:
     for user in records:
         user_details = {"access_token": user[0], "user_id": user[1], "database_id": user[2], "is_revoked": False}
         validated_users_details.append(user_details)
-    logging.info(f"Extracted user id, access token and database id from {len(records)} number of records fetched from USERS table")
+    logging.info("Extracted user id, access token and database id from USERS table", num_records=len(records))
     return validated_users_details
 
 
@@ -70,9 +70,9 @@ def get_identifiers(notion_data: list, user_id:str) -> list:
                 page_id = item["id"]
                 identifier["page_id"] = page_id
                 new_identifiers_list.append(identifier)
-        logging.info(f"ACTION: New titles/ISBN extracted from new additions to BookShelf database for user: {user_id}")
+        logging.info("New titles/ISBN extracted from new additions to BookShelf database", category="ACTION", user_id=user_id)
     else:
-        logging.info(f"No changes in BookShelf/No new titles/ISBN found for user: {user_id}")
+        logging.info("No changes in BookShelf/No new titles/ISBN found", user_id=user_id)
     return new_identifiers_list
 
 

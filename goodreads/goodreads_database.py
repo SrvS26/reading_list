@@ -50,7 +50,7 @@ def update_goodreads_id(database_id, user_id):
         logging.info(f"Inserted ID into table for user {user_id}")
         conn.commit()
     except Exception as e:
-        logging.exception(f"Insert failed for {user_id}: {e}")
+        logging.exception(f"Insert failed {e} for user: {user_id}")
     cursor_object.close()
     return         
 
@@ -66,7 +66,7 @@ def update_goodreads(user_id, num_books, count):
         logging.info(f"Inserted ID into table for user {user_id}")
         conn.commit()
     except Exception as e:
-        logging.exception(f"Insert failed for {user_id}: {e}")
+        logging.exception(f"Insert failed {e} for user: {user_id}")
     cursor_object.close()
     return         
 

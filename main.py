@@ -51,7 +51,7 @@ image_file = config("IMAGE_PATH")
 
 api_key = config("BOOK_API_KEY")
 
-logging, listener = custom_logger.get_logger("main")
+logging = custom_logger.get_logger()
 
 conn = records.connect_database(database_file)
 
@@ -62,11 +62,11 @@ if not os.path.exists(processing_image_path):
     os.mkdir(processing_image_path)
 
 async def on_request_start(session, context, params):
-    logging, listener = custom_logger.get_logger("aiohttp.client")
-    logging.debug(f'Starting request <{params}>')
+    logging = custom_logger.get_logger()
+    logging.debug(f'Starting request')
 
 async def on_response_chunk_received(session, context, params):
-    logging, listener = custom_logger.get_logger("aiohttp.client")
+    logging = custom_logger.get_logger()
     logging.debug(f'Received response')
 
 def get_all_validated():
@@ -155,8 +155,6 @@ async def run_main(validated_users_details):
         )
 
 while True:
-    listener.start()
     for sublist in get_all_validated():
         asyncio.run(run_main(sublist))
         time.sleep(2)
-    listener.stop()

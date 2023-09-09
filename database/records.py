@@ -4,7 +4,7 @@ import custom_logger
 
 databaseFile = config("DATABASE_FILE_PATH")
 
-logging, listener = custom_logger.get_logger("database")
+logging = custom_logger.get_logger()
 
 def connect_database(db_file: str):
     """Connection to database file
@@ -12,7 +12,7 @@ def connect_database(db_file: str):
     :param db_file: file path to database file
     """
     conn = sqlite3.connect(db_file)
-    logging.debug(f"Connected to database '{db_file}'")
+    logging.debug("Connected to database", db_file=db_file)
     return conn
 
 
@@ -35,12 +35,12 @@ def fetch_records(conn, table_name: str, column_names: list, fetch_all: bool = T
         all_conditions = ""   
     data = f"""SELECT {", ".join(column_names)} from {table_name}{all_conditions}"""
     cursor.execute(data)
-    logging.info(f"Trying to fetch data for the columms: {column_names} from the table: {table_name}")
+    logging.info("Trying to fetch data from table", columns= column_names, table=table_name)
     if fetch_all is True:
         records = cursor.fetchall()
     else:
         records = [cursor.fetchone()]
-    logging.info(f"""Fetched {len(records)} number of rows of records from table: {table_name}""")   
+    logging.info("Fetched records from table", table= table_name, num_records=len(records))   
     conn.commit()
     cursor.close()
     return records
@@ -61,7 +61,7 @@ def disable_users(conn, list_revoked_users: list):
             "UPDATE USERS SET is_revoked = 1, is_validated = 0, database_id = '-1' WHERE database_id = ?",
             list_database_ids,
         )
-        logging.info(f"Updated {len(list_revoked_users)} number of is_revoked to 1 in USERS")
+        logging.info("Updated is_revoked to 1 in USERS for revoked users", revoked_users=len(list_revoked_users))
         conn.commit()
         cursor.close()
     else:

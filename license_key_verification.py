@@ -2,22 +2,17 @@ import json
 import sqlite3
 from decouple import config
 import requests
-import logging
 import time
 import database.records as records
 import api.notion as notion
+import custom_logger
 
 
 verify_url = config("GUMROAD_VERIFY_URL")
 gumroad_token = config("GUMROAD_TOKEN")
 gumroad_product_id = config("GUMROAD_PRODUCT_ID")
 
-logging.basicConfig(
-    filename="license_key_verification.log",
-    format="%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
-    level=logging.DEBUG,
-    datefmt="%d-%b-%y %H:%M:%S",
-)
+logging = custom_logger.get_logger()
 
 database_file_path = config("DATABASE_FILE_PATH")
 
@@ -42,10 +37,10 @@ def new_user_details() -> list:
     try:
         cursor.execute(data)
         records = cursor.fetchall()
-    except Exception as e:
-        logging.exception(f"Could not fetch new user access tokens from USERS: {e}")
+    except Exception:
+        logging.exception("Could not fetch new user access tokens from USERS", service="sqlite")
     new_users = []
-    logging.info(f"Fetched {len(new_users)} number of tokens from USERS")
+    logging.info(f"Fetched {len(new_users)} number of tokens from USERS", service="sqlite")
     if len(records) > 0:
         for item in records:
             user_details = {"access_token": item[0], "user_id": item[1]}
@@ -63,8 +58,8 @@ def revoked_access() -> list:
     try:
         cursor.execute(data)
         records = cursor.fetchall()
-    except Exception as e:
-        logging.exception(f"Could not fetch is_revoked from Users: {e}")
+    except Exception:
+        logging.exception("Could not fetch is_revoked from Users", service="sqlite")
     revoked_users = []
     if len(records) > 0:
         for item in records:
@@ -78,9 +73,9 @@ def update_validated_status(user_id: str, license_key: str):
     data = f"""UPDATE USERS SET is_validated = 1, is_revoked = 0, license_key = '{license_key}' WHERE user_id = '{user_id}'"""
     try:
         cursor.execute(data)
-        logging.info("User status updated as validated")
-    except Exception as e:
-        logging.exception(f"Could not update validated status for {user_id}: {e}")
+        logging.info("User status updated as validated", user_id=user_id, service="sqlite")
+    except Exception:
+        logging.exception("Could not update validated status", user_id=user_id, service="sqlite")
     conn.commit()
     return
 
@@ -114,7 +109,7 @@ def get_license_key(database_id: str, user_info) -> tuple:
                 if len(license_key_) != 0:
                     #formatting when copied from the Gumroad email gives 3 separate strings and an invalid license key response. We join the individual strings, remove splitlines and then join the result.
                     license_key = "".join("".join(key["plain_text"] for key in license_key_)[:-1].splitlines())
-                    logging.info(f"Received license key: {license_key} for user: {user_id}")
+                    logging.info("Received license key", license_key=license_key, database_id=database_id,user_id=user_id,service="notion")
                     page_id = results.get("id", None)
                     return license_key, page_id
                 else:
@@ -122,10 +117,11 @@ def get_license_key(database_id: str, user_info) -> tuple:
             else:
                 return None, None
         else:
-            logging.error(f"Could not fetch license key for user: {user_id}, error: {status_code}")
+            logging.error("Could not fetch license key", user_id=user_id, status_code=status_code, database_id=database_id, service="notion")
             return None, None
-    except Exception as e:
-        logging.exception(f"Could not fetch license key for user: {user_id}, exception: {e}")
+    except Exception:
+        print(user_id)
+        logging.exception("Could not fetch license key", user_id=user_id, database_id=database_id, service="notion")
         return None, None
 
 
@@ -134,7 +130,7 @@ def purchased_goodreads(user_id: str): #For Goodreads experiment
     cursor_object = conn.cursor()
     data = f"""INSERT INTO GOODREADS (user_id) VALUES ('{user_id}')"""
     cursor_object.execute(data)
-    logging.info("Updated GOODREADS table with user details")
+    logging.info("Updated GOODREADS table with user details", user_id=user_id)
     conn.commit()
     cursor_object.close()
     return
@@ -164,12 +160,12 @@ def update_page(page_id: str, value: int, user_info: dict, license_key: str):
         status_code = r.status_code
         if status_code != 200:
             logging.error(
-                f"Could not patch message to Notion database:{status_code} for user: {userID}"
+                "Could not patch license key message to Notion database", status_code=status_code, user_id=userID,service="notion"
             )
             return
-    except Exception as e:
+    except Exception:
         logging.exception(
-            f"Could not patch message to Notion database:{e} for user: {userID}"
+            "Could not patch license key message to Notion database", user_id=userID, service="notion"
         )
         return
 
@@ -184,21 +180,21 @@ def verify_license(license_key: str, user_details: dict) -> tuple:
         response = requests.post(verify_url, headers={}, data=params)
         status_code = response.status_code
         if status_code == 200:
-            logging.info("Successfully verified license key with Gumroad")
+            logging.info("Successfully verified license key with Gumroad", user_id=user_details['user_id'], service="gumroad")
             parsed_response = response.json()
             return (parsed_response, 100)
         else:
-            logging.error(f"Gumroad license key query failed for user: {user_details['user_id']}, status code: {status_code}, license key: {license_key}, response: {response.text}")
+            logging.error("Gumroad license key query failed", user_id=user_details['user_id'], status_code=status_code, license_key= license_key, response= response.text, service="gumroad")
             return (None, 102)
-    except Exception as e:
-        logging.error(f"Gumroad license key query failed for user: {user_details['user_id']}, {e}")
+    except Exception:
+        logging.exception("Gumroad license key query failed", user_id=user_details['user_id'], license_key=license_key, service="gumroad")
         return (None, 104)
     
 
 def gumroad_response(response, user_id: str, license_key: str, revoked_users: list) -> int:
     """Check if license key is successfully validated and to ensure that the license is key is being used only by one user."""
     if response.get("success") == True:
-        logging.info("License key successfully validated")
+        logging.info("License key successfully validated", user_id=user_id,service="gumroad")
         num_uses = response.get("uses", None)
         if num_uses == 1:
             update_validated_status(user_id, license_key)
@@ -210,7 +206,7 @@ def gumroad_response(response, user_id: str, license_key: str, revoked_users: li
             else:
                 return 101
         elif num_uses is None:
-            logging.error("No key 'uses' found in the Gumroad response for license key query")
+            logging.error("No key 'uses' found in the Gumroad response for license key query", service="gumroad")
             return 104
     else:
         return 104
@@ -240,6 +236,6 @@ while True:
                         update_page(page_id, value, user_info, license_key)
                     else:
                         update_page(page_id, response[1], user_info, license_key)
-        except Exception as e:
-            logging.exception(e)
+        except Exception:
+            logging.exception("Exception in license key verification")
     time.sleep(5)
