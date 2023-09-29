@@ -106,7 +106,8 @@ def process_image(filename):
         with Image(filename=path_to_image) as img:
             image_height, image_width = img.height, img.width
             background_colour = build_book_cover.get_background_colour(path_to_image)
-            background = build_book_cover.generate_background(background_colour, (image_height+40)) 
+            # background = build_book_cover.generate_background(background_colour, (image_height+40))
+            background = build_book_cover.generate_background(background_colour, (image_height+20)) 
             shadow_on_background = build_book_cover.add_shadow(path_to_image, background, image_height, image_width)
             with Image(filename=shadow_on_background) as img:
                 img.composite(Image(filename=path_to_image), gravity="center")
