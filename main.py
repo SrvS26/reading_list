@@ -76,7 +76,6 @@ def get_all_validated():
     return ([validated_users_details[x:x+num_users] for x in range(0, len(validated_users_details), num_users)])
 
 
-
 async def get_new_identifiers(session, user_info: dict) -> dict:
     """Takes a dict with user details and returns it updated with new identifiers (if any) added to the user's database and missing properties in the user's database.
 

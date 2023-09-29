@@ -1,15 +1,21 @@
 import requests
 import time
 import api.notion as notion
-from flask import Flask
+from flask import Flask, flash, send_from_directory
 from flask import request
 from flask import render_template
 from flask import redirect, url_for
 import sqlite3
 import datetime
 from decouple import config
+from werkzeug.utils import secure_filename
 import logging
+import os
+from images import build_book_cover
+from uuid import uuid4
+from wand.image import Image
 import custom_logger
+from markupsafe import Markup
 
 # file_path = config("STATIC_FILE_PATH")
 
@@ -17,7 +23,7 @@ logging = custom_logger.get_logger()
 
 errors = {
     100: "There appears to be an error. Please try again later.",
-    101: "Could not find the Bookshelf database. Please ensure Autofill Bookshelf was given access to the Bookshelf database.",
+    101: "Could not find the Bookshelf database.<br> Please ensure Autofill Bookshelf was given access to the Bookshelf database.",
     102: "To use Autofill Bookshelf, please allow access.",
     103: "User not found",
     104: "You have not granted access to Autofill Bookshelf",
@@ -29,9 +35,14 @@ database_file = config("DATABASE_FILE_PATH")
 client_id = config("NOTION_CLIENT_ID")
 client_secret = config("NOTION_CLIENT_SECRET")
 notion_url = config("NOTION_URL")
+allowed_extensions = {'jpg', 'jpeg', 'png'}
+notion_covers_unprocessed = config("BOOK_COVERS")
+notion_covers_processed = config("PROCESSED_BOOK_COVERS")
+secret_key = config("SECRET_KEY")
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+Flask.secret_key = secret_key
 
 
 def default_headers(token: str):
@@ -75,6 +86,33 @@ def add_to_database(user_workspace_details, database_id: str):
     cursor_object.close()
     return
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def process_image(filename):
+    """Get a fully processed book cover image ready to be uploaded to Notion"""
+    path_to_image = notion_covers_unprocessed + filename
+    final_sizes = build_book_cover.calculate_size(path_to_image)
+    if final_sizes["is_book_large"]:
+        with Image(filename=path_to_image) as img:
+            resized_image = img.resize(height=final_sizes["height"], width=final_sizes["width"])
+            background_colour = build_book_cover.get_background_colour(path_to_image)
+            background = build_book_cover.generate_background(background_colour) 
+            shadow_on_background = build_book_cover.add_shadow(path_to_image, background, final_sizes["height"], final_sizes["width"])
+            with Image(filename=shadow_on_background) as img2:
+                img2.composite(img, gravity="center")
+                img2.save(filename=f"{notion_covers_processed}{filename}")
+    else: 
+        with Image(filename=path_to_image) as img:
+            image_height, image_width = img.height, img.width
+            background_colour = build_book_cover.get_background_colour(path_to_image)
+            background = build_book_cover.generate_background(background_colour, (image_height+40)) 
+            shadow_on_background = build_book_cover.add_shadow(path_to_image, background, image_height, image_width)
+            with Image(filename=shadow_on_background) as img:
+                img.composite(Image(filename=path_to_image), gravity="center")
+                img.save(filename=f"{notion_covers_processed}{filename}")
+    logging.info("ACTION: Book cover image created")
+    return filename
 
 @app.route("/reading-list")
 def get_code():
@@ -146,4 +184,56 @@ def terms():
 
 @app.route("/error/<int:error>")
 def error(error):
-    return render_template("error.html", error=errors[error])
+    return render_template("error.html", error=Markup(errors[error]))
+
+
+def unique_name(filename: str) -> str:
+    return str(uuid4()) + filename
+
+
+@app.route("/upload-file", defaults={"name": None}, methods=["GET"])
+@app.route("/upload-file/<name>")
+def upload_file(name):
+    if request.method == "GET":
+        if name is None:
+            return render_template("upload_file.html")
+        else:
+            return redirect(url_for("download_file", name=name))
+    else:
+        return redirect(url_for("download-notioncover", _methods="POST"))
+
+
+@app.route("/download-notioncover", methods=["POST"])
+def download_notioncover():
+    if request.method == "POST":
+        if 'file' not in request.files:
+            flash('No file part')
+            return render_template("layout.html")
+        file = request.files['file']
+        if file.filename == '':
+            flash("No selected file")
+            return render_template("layout.html")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            unique_filename = unique_name(filename)
+            file.save(os.path.join(notion_covers_unprocessed, unique_filename))
+            process_image(unique_filename)
+            return redirect(url_for("upload_file", name=unique_filename))
+        else:
+            flash("Please choose a different file format")
+            return render_template("layout.html")
+    else:
+        flash('No file has been uploaded')
+        return render_template("layout.html")
+
+
+@app.route("/uploads/<name>")
+def download_file(name):
+    file_path = os.path.join(notion_covers_processed, name)
+    return render_template("download.html", file_path = file_path, filename = name)
+
+
+@app.route("/download-image/<filename>")
+def download_image(filename):
+    file_path = os.path.join(notion_covers_processed, filename)
+    return send_from_directory(notion_covers_processed, filename, as_attachment=True)

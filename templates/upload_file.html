@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{url_for('static', filename='favicon.ico')}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200&family=Prompt:wght@100&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{url_for('static', filename='styles/notion_cover.css')}}">
+    <title>Notion Book Cover</title>
+</head>
+<header>
+    <div class="logo-container">
+        <img src="{{url_for('static', filename='new-logo.svg')}}" alt="Se7evn Forward Logo">
+        <h1>Notion Book Cover</h1>
+    </div>
+</header>
+<body>
+    <div>
+      <form class="upload-form" method="post" enctype='multipart/form-data' action="{{url_for('download_notioncover')}}">
+      <div id="container">
+          <label for="upload-button">Choose A File (jpg, jpeg, png)<input type="file" name="file" id="upload-button" accept="image/*" /></label>
+          <p>or drop an image</p>
+          <div id="image-display"></div>
+          <div id="error"></div>
+          <button id="generate-button" style="display: none;">GENERATE!</button>
+          <div id="download-button-container"></div>
+          <!-- <input type="submit" value="Download Your Notion Book Cover!"> -->
+    </div>
+</form>
+        </div>    
+        <script src="{{url_for('static', filename='styles/notion_cover.js')}}"></script>
+</body>
+</html>

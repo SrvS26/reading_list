@@ -1,5 +1,5 @@
 from wand.color import Color
-from wand.image import Image, GRAVITY_TYPES, COLORSPACE_TYPES
+from wand.image import Image
 from decouple import config
 import os
 from uuid import uuid4
@@ -64,9 +64,24 @@ async def async_get_book_image(session, mapped_book_details: dict, cover_image_n
 def resize_image(cover_image_name: str) -> str:
     """Resize book cover image to a uniform size to allow further processing."""
     with Image(filename=cover_image_name) as img:
-        img.resize(height=180)
+        img.resize(height=190, width=130)
         img.save(filename=f"{processing_images_path}resized_image.jpg")
     return f"{processing_images_path}resized_image.jpg"
+
+
+def calculate_size(file_path: str):
+    with Image(filename=file_path) as img:
+        book_width = img.width
+        book_height = img.height
+    if book_height >= 560:
+        factor = 560/book_height
+        final_book_height = int(book_height * factor)
+        final_book_width = int(book_width * factor)
+        return {"width": final_book_width, "height": final_book_height, "is_book_large": True}
+    else:
+        final_background_height = book_height + 20
+        final_background_width = int(final_background_height * (5/2))
+        return {"width": final_background_width, "height": final_background_height, "is_book_large": False}
 
 
 def get_background_colour(image_name: str) -> str:
@@ -97,23 +112,23 @@ def is_background_dark(srgb: str) -> bool:
         return True
 
 
-def generate_background(srgb: str) -> str:
+def generate_background(srgb: str, height: int = 600) -> str:
     """Get an image of custom size and srgb for book cover background. If background is too dark, get a suitable coloured background."""
     if is_background_dark(srgb):
         hex_code = "#151514"
     else:
         hex_code = srgb  # input is srgbcode
+    background_width = int(height * (5/2))
     with Color(hex_code) as bg:
-        with Image(width=500, height=200, background=bg) as img:
+        with Image(width=background_width, height=height, background=bg) as img:
             img.save(filename=f"{processing_images_path}background.jpg")
     return f"{processing_images_path}background.jpg"
 
 
-def add_shadow(image_name: str, background: str) -> str:
+def add_shadow(image_name: str, background: str, height: int, width: int) -> str:
     """Add a shadow for the book cover on the background."""
-    with Image(filename=f"{image_name}") as img:
-        w = img.width
-        h = img.height
+    w = width
+    h = height
     with Color("#000005") as bg:
         with Image(width=(w + 5), height=(h + 5), background=bg) as img:
             img.save(filename=f"{processing_images_path}shadow.jpg")
@@ -129,16 +144,27 @@ def add_shadow(image_name: str, background: str) -> str:
 def generate_cover_image (cover_image_name: str) -> str:
     """Get a fully processed book cover image ready to be uploaded to Notion"""
     path_to_image = processing_images_path + cover_image_name
-    resized_image = resize_image(path_to_image)
-    background_colour = get_background_colour(path_to_image)
-    background = generate_background(background_colour) 
-    shadow_on_background = add_shadow(resized_image, background)
-    with Image(filename=shadow_on_background) as img:
-        img.composite(Image(filename=resized_image), gravity="center")
-        img.save(filename=f"{image_file_path}{cover_image_name}")
+    final_sizes = calculate_size(path_to_image)
+    if final_sizes["is_book_large"]:
+        with Image(filename=path_to_image) as img:
+            resized_image = img.resize(height=final_sizes["height"], width=final_sizes["width"])
+            background_colour = get_background_colour(path_to_image)
+            background = generate_background(background_colour) 
+            shadow_on_background = add_shadow(path_to_image, background, final_sizes["height"], final_sizes["width"])
+            with Image(filename=shadow_on_background) as img2:
+                img2.composite(img, gravity="center")
+                img2.save(filename=f"{image_file_path}{cover_image_name}")
+    else:      
+        with Image(filename=path_to_image) as img:
+            image_height, image_width = img.height, img.width
+            background_colour = get_background_colour(path_to_image)
+            background = generate_background(background_colour, (image_height + 40)) 
+            shadow_on_background = add_shadow(path_to_image, background, image_height, image_width)
+            with Image(filename=shadow_on_background) as img2:
+                img2.composite(img, gravity="center")
+                img2.save(filename=f"{image_file_path}{cover_image_name}")
     logging.info("Book cover image created", category="ACTION")
-    return
-
+    return cover_image_name
 
 def generate_image_name(mapped_book_details: dict) -> str:
     """Generate an image name using the book identifiers or a unique uuid if the book has no identifiers"""
@@ -169,3 +195,4 @@ async def async_upload_image(session, conn, mapped_book_details: dict) -> str:
             return image_url + cover_image_name
         elif mapped_book_details['Image_url'] == "":
             return image_url + 'NI.png'
+

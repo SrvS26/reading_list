@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notion Cover Image</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{url_for('static', filename='favicon.ico')}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200&family=Prompt:wght@100&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{url_for('static', filename='styles/notion_cover.css')}}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #e9e9e9;
+            font-family: "Montserrat", sans-serif;
+         }   
+         header{
+            background-color: #1e9ca6;
+         }
+
+         h1 {
+            text-align: left;
+            font-family: "Montserrat", sans-serif;
+            font-size: 4rem;
+            color: white;
+            }
+           
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            }
+
+        #logo {
+        width: 8rem;
+        }
+
+        button {
+  display: block;
+  position: relative;
+  background-color: #1e9ca6;
+  color: #e9e9e9;
+  font-size: 1.4em;
+  text-align: center;
+  width: 20em;
+  padding: 1em 0;
+  border-radius: 0.3em;
+  border: none;
+  margin: 1em auto 1em auto;
+  cursor: pointer;
+  box-shadow: 0 1.25em 3.43em rgba(0, 0, 0, 0.08);
+}
+
+    #final-image{
+        position: relative;
+        width: 30%;
+        margin: 100px auto;
+        display: flex;
+        justify-content: space-evenly;
+        gap: 1.25em;
+        flex-wrap: wrap;
+    }
+
+    a{
+        text-decoration: none;
+    }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img id="logo" src="{{url_for('static', filename='new-logo.svg')}}" alt="Se7evn Forward Logo">  
+            <h1>Notion Cover Image</h1>
+        </div>
+    </header>
+    <img id="final-image" src="{{ url_for('static', filename='notion_covers_processed/' + filename) }}" alt="Notion Cover Image">
+    <a href="{{ url_for('download_image', filename=filename) }}" download>
+        <button>Download!</button>
+    </a>
+</body>
+</html>
