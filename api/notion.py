@@ -39,7 +39,7 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
     :param object_type: database|page
     :param object_name: name of database|page
     :param user_details: {access_token: str, user_id: str}
-    :returns: requested database ID if found, None if not, status code in case of an error.
+    :returns: requested database ID if found, None if not.
     """
     notion_search_url = notion_url + "search"
     params = {
@@ -76,6 +76,7 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
                     object_name=object_name,
                     user_id=user_details["user_id"],
                     service="notion",
+                    status_code=status_code
                 )
                 return None
     except Exception:
@@ -84,9 +85,10 @@ def notion_search_id(object_type: str, object_name: str, user_details: dict):
             object_type=object_type,
             object_name=object_name,
             user_id=user_details["user_id"],
-            service="notion"
+            service="notion",
+            status_code=status_code
         )
-    return status_code
+    return None
 
 
 async def get_data_from_database(session, user_info_: dict, payload: str) -> dict | None | int:

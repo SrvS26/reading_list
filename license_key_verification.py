@@ -120,7 +120,6 @@ def get_license_key(database_id: str, user_info) -> tuple:
             logging.error("Could not fetch license key", user_id=user_id, status_code=status_code, database_id=database_id, service="notion")
             return None, None
     except Exception:
-        print(user_id)
         logging.exception("Could not fetch license key", user_id=user_id, database_id=database_id, service="notion")
         return None, None
 
