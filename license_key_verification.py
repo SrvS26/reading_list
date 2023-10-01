@@ -174,7 +174,7 @@ def verify_license(license_key: str, user_details: dict) -> tuple:
     :param user_info: {"access_token": "access_token", "user_id": "user_id"}
     :returns: (response, response code)|(None, response code)
     """
-    params = {"product_permalink": gumroad_product_id, "license_key": license_key.strip()}
+    params = {"product_id": gumroad_product_id, "license_key": license_key.strip()}
     try:
         response = requests.post(verify_url, headers={}, data=params)
         status_code = response.status_code
