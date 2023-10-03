@@ -62,5 +62,37 @@ CREATE TABLE IF NOT EXISTS VERSIONS(
             FOREIGN KEY(user_id) REFERENCES USERS(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS TIER(
+            license_key VARCHAR(255),
+            start_date VARCHAR(255),
+            expiry_date VARCHAR(255),
+            FOREIGN KEY(license_key) REFERENCES USERS
+);
+
+CREATE TABLE IF NOT EXISTS GUMROAD(
+            sale_id VARCHAR(255),
+            sale_timestamp VARCHAR(255),
+            order_number VARCHAR(255),
+            product_id VARCHAR(255),
+            permalink VARCHAR(255),
+            product_permalink VARCHAR(255),
+            product_name VARCHAR(255),
+            short_product_id VARCHAR(255),
+            email VARCHAR(255),
+            full_name VARCHAR(255),
+            subscription_id VARCHAR(255),
+            ip_country VARCHAR(255),
+            referrer VARCHAR(255),
+            price VARCHAR(255),
+            variants VARCHAR(255),
+            is_recurring_charge VARCHAR(255),
+            license_key VARCHAR(255),
+            affiliate VARCHAR(255),
+            affiliate_credit VARCHAR(255),
+            refunded VARCHAR(255),
+            discover_fee_charged VARCHAR(255),
+            gumroad_fee VARCHAR(255),
+            FOREIGN KEY(license_key) REFERENCES USERS
+);
 
 PRAGMA foreign_keys = ON;

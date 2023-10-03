@@ -1,7 +1,7 @@
 import requests
 import time
 import api.notion as notion
-from flask import Flask, flash, send_from_directory
+from flask import Flask, flash, jsonify, send_from_directory
 from flask import request
 from flask import render_template
 from flask import redirect, url_for
@@ -238,3 +238,17 @@ def download_file(name):
 def download_image(filename):
     file_path = os.path.join(notion_covers_processed, filename)
     return send_from_directory(notion_covers_processed, filename, as_attachment=True)
+
+@app.route("/gumroad", methods=["POST"])
+def add_purchase():
+    conn = sqlite3.connect(database_file)
+    cursor_object = conn.cursor()
+    form = request.form
+    if form.get("test") != "true":
+        list_params = [form.get("sale_id"), form.get("sale_timestamp"), form.get("order_number"), form.get("product_id"), form.get("permalink"), form.get("product_permalink"), form.get("product_name"), form.get("short_product_id"), form.get("email"), form.get("full_name"), form.get("subscription_id"), form.get("ip_country"), form.get("referrer"), form.get("price"), form.get("variants"), form.get("is_recurring_charge"), form.get("license_key"), form.get("affiliate"), form.get("affiliate_credit_amount_cents"), form.get("refunded"), form.get("discover_fee_charged"), form.get("gumroad_fee")]
+        data = """INSERT INTO GUMROAD(sale_id, sale_timestamp, order_number, product_id, permalink, product_permalink, product_name, short_product_id, email, full_name, subscription_id, ip_country, referrer, price, variants, is_recurring_charge, license_key, affiliate, affiliate_credit, refunded, discover_fee_charged, gumroad_fee)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        cursor_object.execute(data, list_params)
+        conn.commit()
+    return jsonify({"message": "Data received"}), 200
+        
