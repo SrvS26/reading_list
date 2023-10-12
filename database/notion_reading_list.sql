@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS TIER(
             FOREIGN KEY(license_key) REFERENCES USERS
 );
 
+
 CREATE TABLE IF NOT EXISTS GUMROAD(
             sale_id VARCHAR(255),
             sale_timestamp VARCHAR(255),
@@ -92,7 +93,7 @@ CREATE TABLE IF NOT EXISTS GUMROAD(
             refunded VARCHAR(255),
             discover_fee_charged VARCHAR(255),
             gumroad_fee VARCHAR(255),
+            is_used INT DEFAULT 0,
             FOREIGN KEY(license_key) REFERENCES USERS
 );
-
 PRAGMA foreign_keys = ON;
