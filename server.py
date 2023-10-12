@@ -211,10 +211,9 @@ def license(user_id):
         if user_info["access_token"] != "" and user_info["user_id"] != "":
             database_id = notion.notion_search_id("database", "Bookshelf", user_info)
             if database_id is not None:
-                dbId = database_id
-                add_dbID_license(dbId, license_key, user_id)
+                add_dbID_license(database_id, license_key, user_id)
                 update_license_status(license_key)
-            if dbId is None:
+            if database_id is None:
                 return redirect(url_for("error", error=101))
             return redirect(url_for("success", database_id=database_id))
     if license["is_valid"] == None:
