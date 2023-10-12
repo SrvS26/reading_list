@@ -209,6 +209,7 @@ def license(user_id):
     license = verify_license(license_key)
     if (license["is_valid"] == True and license["never_used"] == True) or (license["is_valid"] == True and license["never_used"] == None and is_revoked == 1):
         if user_info["access_token"] != "" and user_info["user_id"] != "":
+            time.sleep(5)
             database_id = notion.notion_search_id("database", "Bookshelf", user_info)
             if database_id is not None:
                 add_dbID_license(database_id, license_key, user_id)
