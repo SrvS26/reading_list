@@ -265,6 +265,7 @@ def upload_file(name):
         if name is None:
             return render_template("upload_file.html")
         else:
+            logging.info("Received GET request with file name", name=name)
             return redirect(url_for("download_file", name=name))
     else:
         return redirect(url_for("download-notioncover", _methods="POST"))
@@ -285,6 +286,7 @@ def download_notioncover():
             unique_filename = unique_name(filename)
             file.save(os.path.join(notion_covers_unprocessed, unique_filename))
             process_image(unique_filename)
+            logging.info("Image processed, redirecting")
             return redirect(url_for("upload_file", name=unique_filename))
         else:
             flash("Please choose a different file format")
@@ -297,6 +299,7 @@ def download_notioncover():
 @app.route("/uploads/<name>")
 def download_file(name):
     file_path = os.path.join(notion_covers_processed, name)
+    logging.info("Received request to show downloaded file", file_path=file_path)
     return render_template("download.html", file_path = file_path, filename = name)
 
 
