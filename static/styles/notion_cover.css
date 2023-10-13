@@ -31,10 +31,9 @@ img {
   min-width: 27.5em;
   padding: 3.12em 1.87em;
   position: absolute;
-  transform: translate(-50%, -50%);
-  left: 50%;
-  top: 50%;
-  /* box-shadow: 0 1.25em 3.43em rgba(20, 20, 20, 0.08); */
+  /* transform: translate(-50%, -50%); */
+  left: 30%;
+  top: 30%;
   box-shadow: 0 1.25em 4.43em rgba(20, 20, 20, 0.2);
   border-radius: 0.5em;
 }
